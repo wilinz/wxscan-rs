@@ -1,34 +1,27 @@
 # wxscan-rs
 
-A Rust port of the `wechat_qrcode` algorithm from OpenCV contrib: CNN-based
-detection, super resolution, and decoding. No OpenCV dependency.
+The `wechat_qrcode` algorithm from OpenCV contrib, in Rust: a CNN locates the
+symbols in a frame, a second network upscales each crop, and a fork of ZXing
+decodes them. No OpenCV, no C++, and with the `tract` backend no C at all.
 
-The port follows the [upstream C++ sources][upstream] closely. Output is
-compared against the original implementation on a fixed corpus, see
-[Parity](#parity).
+Decoding a QR code is the easy part. Finding a small, distant or badly lit one
+in a 1080p frame is what the two CNN stages are for, and why the WeChat scanner
+reads a code from across a room while a plain decoder asks you to hold it up to
+the lens.
+
+**It is checked against the original, not just tested.** On a fixed corpus the
+decoded text matches OpenCV's C++ implementation on 159 of 160 images without
+models and 24 of 24 scene images with them, and the corner coordinates are
+bit-identical on all but two, which differ at sub-pixel level. What that costs
+in freedom is deliberate: the port follows the [upstream sources][upstream] line
+by line, including the parts that look wrong, because a port that quietly
+improves on the original cannot be compared to it. See [Parity](#parity).
+
+**It builds anywhere cargo does.** The default backend needs the TFLite C
+library; the `tract` backend needs nothing outside Rust, so cross-compiling is
+`cargo build --target`. Both run the same weights.
 
 [upstream]: https://github.com/opencv/opencv_contrib/tree/4.x/modules/wechat_qrcode
-
-## Crates
-
-The split follows one boundary: whether a piece is specific to this algorithm.
-The two pieces that are not live in their own repositories, because they are
-useful without any of this:
-
-| Crate | Repository | Contents |
-|---|---|---|
-| [`cvlite`](https://github.com/wilinz/cvlite) | own | The OpenCV `imgproc` functions used here: resize, adaptive threshold, colour conversion, blob. Not specific to QR codes; NEON paths on aarch64. |
-| [`wxing`](https://github.com/wilinz/wxing) | own | The ZXing fork used by WeChat: binarizers, finder patterns, decoder. Independent of the CNN stages, so it decodes on its own. |
-
-Everything below is specific to the WeChat algorithm, and the three move as one
-version: the tflite binding is the backend the detector runs on, and the C ABI
-is its surface.
-
-| Crate | Contents |
-|---|---|
-| [`wxscan`](crates/wxscan) | CNN detection, super resolution, and the orchestration around them. This is the complete algorithm. |
-| [`wxscan-tflite`](crates/wxscan-tflite) | The tflite binding, used as the default inference backend. Separate so the only C dependency is confined to it. |
-| [`wxscan-ffi`](crates/wxscan-ffi) | The C ABI, for callers outside Rust. Generates `include/wxscan.h` with cbindgen. |
 
 ## Usage
 
@@ -58,6 +51,27 @@ for result in scanner.detect_and_decode_gray(&gray, width, height) {
 ```
 
 `gray` is 8-bit grayscale, one byte per pixel, row after row.
+
+## Crates
+
+The split follows one boundary: whether a piece is specific to this algorithm.
+The two pieces that are not live in their own repositories, because they are
+useful without any of this:
+
+| Crate | Repository | Contents |
+|---|---|---|
+| [`cvlite`](https://github.com/wilinz/cvlite) | own | The OpenCV `imgproc` functions used here: resize, adaptive threshold, colour conversion, blob. Not specific to QR codes; NEON paths on aarch64. |
+| [`wxing`](https://github.com/wilinz/wxing) | own | The ZXing fork used by WeChat: binarizers, finder patterns, decoder. Independent of the CNN stages, so it decodes on its own. |
+
+Everything below is specific to the WeChat algorithm, and the three move as one
+version: the tflite binding is the backend the detector runs on, and the C ABI
+is its surface.
+
+| Crate | Contents |
+|---|---|
+| [`wxscan`](crates/wxscan) | CNN detection, super resolution, and the orchestration around them. This is the complete algorithm. |
+| [`wxscan-tflite`](crates/wxscan-tflite) | The tflite binding, used as the default inference backend. Separate so the only C dependency is confined to it. |
+| [`wxscan-ffi`](crates/wxscan-ffi) | The C ABI, for callers outside Rust. Generates `include/wxscan.h` with cbindgen. |
 
 ## Inference backends
 
