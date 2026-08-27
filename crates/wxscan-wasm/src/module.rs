@@ -283,6 +283,48 @@ fn to_gray(pixels: &[u8], width: usize, height: usize, format: i32) -> Vec<u8> {
     }
 }
 
+/// The stage timers, taken and reset.
+///
+/// Writes eleven microsecond counts into `out`, in this order: the detector's
+/// preparation, its forward pass, prior box generation and decoding with NMS,
+/// then its input width and height; then super resolution, zxing, and the
+/// number of decode attempts, and the last candidate's width and height. Every
+/// one is the total since the previous call, so a caller reads them once per
+/// frame.
+///
+/// The clock behind them is the host's — see `wxscan_host_now_us` — so a host
+/// that does not provide one reads zeros.
+///
+/// Writes no more than `len` of them, so a host that reads only the first few
+/// need not hand over room for all eleven. [`wxscan_wasm_stage_count`] is how
+/// many there are.
+///
+/// # Safety
+/// `out` must point to `len` writable `u32`s.
+#[no_mangle]
+pub unsafe extern "C" fn wxscan_wasm_take_stages(out: *mut u32, len: u32) {
+    if out.is_null() {
+        return;
+    }
+    let (pre, net, prior, post, dw, dh) =
+        wxscan::detector::ssd_detector::take_stage_us();
+    let (sr, zxing, tries, cw, ch) = wxscan::wechat_qrcode::take_decode_stage_us();
+    let values = [pre, net, prior, post, dw, dh, sr, zxing, tries, cw, ch];
+    for (i, value) in values.iter().take(len as usize).enumerate() {
+        // Saturating, not truncating: these are running totals that only reset
+        // when they are read, and a page left scanning for over an hour would
+        // otherwise wrap a microsecond count round to a small number, which
+        // reads as a fast stage rather than as an overflow.
+        out.add(i).write((*value).min(u32::MAX as u64) as u32);
+    }
+}
+
+/// How many counts [`wxscan_wasm_take_stages`] has to give.
+#[no_mangle]
+pub extern "C" fn wxscan_wasm_stage_count() -> u32 {
+    11
+}
+
 /// Release a document from [`wxscan_wasm_scan_gray_json`].
 ///
 /// # Safety

@@ -62,6 +62,12 @@ both formats are converted from, and it builds anywhere cargo does:
 wxscan = { version = "0.1", default-features = false, features = ["tract"] }
 ```
 
+One thing is needed on `wasm32-unknown-unknown` whatever the features: the host
+must supply a `wxscan_host_now_us() -> f64` import in the module `wxscan`.
+`std::time::Instant::now()` panics on that target, so the stage timers read the
+host's clock instead — a browser answers `performance.now() * 1000`. A host with
+no clock to lend can return a constant, and every stage then reports zero.
+
 Turning both off leaves a core with no inference and no C dependency, which
 builds with plain `cargo build`:
 

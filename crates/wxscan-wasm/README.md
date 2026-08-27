@@ -41,13 +41,29 @@ Every build exports `malloc` and `free`, because a wasm module has no other way
 to be handed an image, and its `memory`. The rest of the exports are the C ABI
 in [`include/wxscan.h`](../wxscan-ffi/include/wxscan.h), unchanged.
 
-The default build additionally **imports** two functions in the module
-`wxscan`, and will not instantiate without them:
+Every build **imports** `wxscan_host_now_us` in the module `wxscan`, and the
+default build imports two more, in the same module. None of them are optional:
+the module will not instantiate without them.
 
 | Import | |
 |---|---|
 | `wxscan_host_forward(net, input, len, shape, rank) -> bytes` | Run network `net` (0 detector, 1 super resolution) over an NCHW f32 input, and return the byte size of the result it prepared, or 0 |
 | `wxscan_host_fetch(dst, len) -> ok` | Write that result into the module's memory |
+| `wxscan_host_now_us() -> f64` | Microseconds from any fixed origin; only differences are read. A browser answers `performance.now() * 1000` |
+
+The clock is not a nicety. `std::time::Instant::now()` panics on
+`wasm32-unknown-unknown`, so without a host clock the stage timers behind
+`wxscan_wasm_take_stages` all report zero, and there is no way to tell from
+inside a browser where a frame's time went. A host with nothing to offer can
+return a constant and get exactly that.
+
+`wxscan_wasm_take_stages(out, len)` writes up to `len` of the eleven `u32`
+microsecond counts — `wxscan_wasm_stage_count()` says how many there are — and
+resets them: the detector's preparation, forward pass, prior boxes and NMS
+decoding, then its input width and height; then super resolution, zxing, the
+number of decode attempts, and the last candidate's width and height. The
+detector's forward count includes the time spent inside `wxscan_host_forward`,
+so it overlaps whatever the host measures there rather than adding to it.
 
 Two calls rather than one so that the module allocates and frees everything;
 the host never holds memory the module has to release. The block written back

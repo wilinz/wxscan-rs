@@ -193,9 +193,13 @@ impl<N: Net> WeChatQRCode<N> {
             let detect_width = (width as f32 * tmp_scale) as usize;
             let detect_height = (height as f32 * tmp_scale) as usize;
             if detect_width > 0 && detect_height > 0 {
-                if let Ok(points) = detector.forward(img, width, height, detect_width, detect_height)
-                {
-                    return points;
+                match detector.forward(img, width, height, detect_width, detect_height) {
+                    Ok(points) => return points,
+                    // Not fatal, but not nothing either: a detector that errors
+                    // reports no candidates, which is indistinguishable from a
+                    // frame with no code in it. Saying so is the difference
+                    // between a bug that is found and one that is not.
+                    Err(e) => eprintln!("wxscan: the detector failed on a {detect_width}x{detect_height} input: {e}"),
                 }
             }
             return Vec::new();

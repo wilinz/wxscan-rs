@@ -95,6 +95,12 @@ tract builds and runs anywhere cargo does, at some cost in speed against
 tflite's XNNPACK kernels. Turning both features off leaves a core with no
 inference at all, which still compiles and tests with plain `cargo build`.
 
+One thing is needed on `wasm32-unknown-unknown` whatever the features: the host
+must supply a `wxscan_host_now_us() -> f64` import in the module `wxscan`.
+`std::time::Instant::now()` panics on that target, so the stage timers read the
+host's clock instead — a browser answers `performance.now() * 1000`. A host with
+no clock to lend can return a constant, and every stage then reports zero.
+
 A backend means implementing one method. The trait lives in `wxscan`, so an
 out-of-tree crate can implement it for its own type:
 
