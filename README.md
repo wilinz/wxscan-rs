@@ -20,9 +20,9 @@ useful without any of this:
 | [`cvlite`](https://github.com/wilinz/cvlite) | own | The OpenCV `imgproc` functions used here: resize, adaptive threshold, colour conversion, blob. Not specific to QR codes; NEON paths on aarch64. |
 | [`wxing`](https://github.com/wilinz/wxing) | own | The ZXing fork used by WeChat: binarizers, finder patterns, decoder. Independent of the CNN stages, so it decodes on its own. |
 
-Everything below is specific to the WeChat algorithm, and the four move as one
-version: the weights belong to the detector, the tflite binding is the backend
-it runs them on, and the C ABI is its surface.
+Everything below is specific to the WeChat algorithm, and the three move as one
+version: the tflite binding is the backend the detector runs on, and the C ABI
+is its surface.
 
 | Crate | Contents |
 |---|---|
@@ -32,12 +32,23 @@ it runs them on, and the C ABI is its surface.
 
 ## Usage
 
+```sh
+cargo add wxscan
+```
+
+The weights are in no crate. Download `detect.tflite` and `sr.tflite` from
+[wxscan-weights](https://github.com/wilinz/wxscan-weights) — or bring your own —
+and read them as bytes:
+
 ```rust
 use wxscan::WeChatQRCode;
 
+let detect_bytes = std::fs::read("detect.tflite")?;
+let sr_bytes = std::fs::read("sr.tflite")?;
+
 // Both models may be None, which decodes without the CNN stages.
-let detect = wxscan::tflite::TfliteNet::from_bytes(detect_bytes)?;
-let sr = wxscan::tflite::TfliteNet::from_bytes(sr_bytes)?;
+let detect = wxscan::tflite::TfliteNet::from_bytes(&detect_bytes)?;
+let sr = wxscan::tflite::TfliteNet::from_bytes(&sr_bytes)?;
 let scanner = WeChatQRCode::new(Some(detect), Some(sr));
 
 for result in scanner.detect_and_decode_gray(&gray, width, height) {
@@ -46,12 +57,7 @@ for result in scanner.detect_and_decode_gray(&gray, width, height) {
 }
 ```
 
-The weights are in no crate. Take the prebuilt ones from
-[wxscan-weights](https://github.com/wilinz/wxscan-weights), or supply your own:
-
-```rust
-let detect = wxscan::tflite::TfliteNet::from_bytes(&std::fs::read("detect.tflite")?)?;
-```
+`gray` is 8-bit grayscale, one byte per pixel, row after row.
 
 ## Inference backends
 
