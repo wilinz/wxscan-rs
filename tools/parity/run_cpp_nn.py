@@ -1,6 +1,6 @@
 import cv2, glob, json, os, sys
 # wechat_qrcode in OpenCV 5 accepts only ONNX; run the Caffe models under 4.10.
-# They are not in this repository: download_models.sh in wxscan-weights fetches them.
+# They are not in this repository: 1_download_models.sh in wxscan-weights fetches them.
 m = sys.argv[3] if len(sys.argv) > 3 else '../../../wxscan-weights/tools/models'
 d = cv2.wechat_qrcode_WeChatQRCode(f'{m}/detect.prototxt', f'{m}/detect.caffemodel', f'{m}/sr.prototxt', f'{m}/sr.caffemodel')
 out={}
