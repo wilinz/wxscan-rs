@@ -3,21 +3,27 @@
 #
 # Kept apart from the `wasm` workflow because it is a different kind of thing.
 # That one runs on every push and takes seconds; this clones TensorFlow, fetches
-# a dozen dependencies and compiles about a thousand XNNPACK microkernels. It
-# only ever has to run when the pinned TensorFlow version moves, which is why
-# it is asked for rather than triggered — and why its release is named after
-# that version rather than after a commit.
+# a dozen dependencies and compiles about a thousand XNNPACK microkernels.
+#
+# So it runs on a tag and nothing else. `tflite-v2.17.1` builds TensorFlow
+# v2.17.1 and publishes it as the release for that same tag — the artifact is
+# anchored to a real ref, and the version is in the name because that, not a
+# commit, is what identifies this thing. Editing the build script does not
+# trigger it: a change worth publishing is worth tagging.
+#
+# workflow_dispatch stays for the case a tag's build fails, which would
+# otherwise mean deleting the tag and pushing it again.
 name: tflite-wasm
 
 on:
+  push:
+    tags: ['tflite-v*']
   workflow_dispatch:
     inputs:
       version:
         description: TensorFlow version to build, e.g. v2.17.1
         required: true
         default: v2.17.1
-  push:
-    paths: ['tools/tflite-wasm/**']
 
 permissions:
   contents: write
@@ -33,17 +39,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # The version comes from the input when asked for, and otherwise from the
-      # default build.sh carries — which is the one wxscan pins everywhere else.
+      # A tag says which version in its own name; a dispatch says so as an
+      # input. The tag it will publish under is the tag it came from, so a
+      # release cannot end up named for a version other than the one built.
       - name: Settle the version
         id: v
         run: |
-          v='${{ inputs.version }}'
-          [ -n "$v" ] || v=$(sed -n 's/^TENSORFLOW_VERSION="${TENSORFLOW_VERSION:-\(.*\)}"$/\1/p' \
-            tools/tflite-wasm/build.sh)
-          [ -n "$v" ] || { echo "could not settle a version" >&2; exit 1; }
-          echo "version=$v" >> "$GITHUB_OUTPUT"
-          echo "building TensorFlow $v"
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            tag="$GITHUB_REF_NAME"
+            version="${tag#tflite-}"
+          else
+            version='${{ inputs.version }}'
+            tag="tflite-$version"
+          fi
+          case "$version" in
+            v*) ;;
+            *) echo "expected a version like v2.17.1, got '$version'" >&2; exit 1 ;;
+          esac
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "building TensorFlow $version, publishing as $tag"
 
       - uses: mymindstorm/setup-emsdk@v14
         with:
@@ -78,13 +93,12 @@ jobs:
           cat out/wxscan_tflite.build
           ls -l out
 
-      # Named after the TensorFlow version, because that is what identifies it:
-      # rebuilding the same version should land in the same place, and a
-      # different version is a different artifact rather than a newer one.
+      # Rebuilding the same version lands in the same place, and a different
+      # version is a different artifact rather than a newer one.
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: tflite-${{ steps.v.outputs.version }}
+          TAG: ${{ steps.v.outputs.tag }}
         run: |
           gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" \
             --prerelease \
