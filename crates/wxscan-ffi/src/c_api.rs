@@ -8,6 +8,8 @@
 use std::ffi::c_char;
 #[cfg(feature = "image-io")]
 use image::ImageDecoder;
+#[cfg(feature = "image-io")]
+use std::io::{BufRead, Seek};
 
 use wxscan::frame::upright_gray;
 use crate::results::{into_c, WxScanResults};
@@ -202,8 +204,10 @@ pub enum WxScanStatus {
     /// The path could not be opened or read.
     Unreadable = 2,
     /// The bytes were read but are not an image this build can decode. PNG,
-    /// JPEG, BMP, GIF, WebP and TIFF are; HEIC is not, and nor is anything
-    /// else needing a system framework.
+    /// JPEG and GIF are — the `image` dependency enables those three and no
+    /// others, because they are what a photo picker actually writes and the
+    /// rest cost 570 KB. HEIC is not, and nor is anything else needing a
+    /// system framework.
     ///
     /// A photo library is mostly HEIC, but a picker generally does not hand it
     /// over that way: on iOS, `image_picker` sniffs the first byte, finds
@@ -271,6 +275,80 @@ pub unsafe extern "C" fn wxscan_scan_path(
             return std::ptr::null_mut();
         }
     };
+    decode_and_scan(scanner, reader, set)
+}
+
+/// Decode an encoded image already in memory and scan it.
+///
+/// The same work as [`wxscan_scan_path`] for a caller that has the bytes
+/// rather than a path: an image picked from a photo library and handed over as
+/// data, a download, an asset, or a browser, which has no filesystem to give a
+/// path into at all.
+///
+/// `data` is the *encoded* file — PNG, JPEG or GIF, the three this build
+/// carries decoders for — not pixels. For pixels use [`wxscan_scan_pixels`].
+/// The format is sniffed from the bytes, so no caller has to say which it is.
+///
+/// `status`, when not NULL, is set to a [`WxScanStatus`] saying what happened.
+/// [`WxScanStatus::Unreadable`] cannot arise here — there is nothing to open —
+/// so a buffer that is not a picture this build decodes comes back as
+/// [`WxScanStatus::UnsupportedFormat`]. Returns NULL for anything other than
+/// [`WxScanStatus::Ok`]. The result must be released with
+/// [`crate::results::wxscan_results_free`].
+///
+/// The orientation recorded in the file is applied, exactly as for a path.
+///
+/// # Safety
+/// `scanner` must come from [`crate::scanner::wxscan_scanner_new`], `data`
+/// must point to at least `len` readable bytes that stay valid for the
+/// duration of the call, and `status`, when not NULL, must point to a writable
+/// [`WxScanStatus`].
+#[cfg(feature = "image-io")]
+#[no_mangle]
+pub unsafe extern "C" fn wxscan_scan_bytes(
+    scanner: *const WxScanScanner,
+    data: *const u8,
+    len: usize,
+    status: *mut WxScanStatus,
+) -> *mut WxScanResults {
+    let set = |s: WxScanStatus| {
+        if !status.is_null() {
+            *status = s;
+        }
+    };
+
+    let Some(scanner) = scanner.as_ref() else {
+        set(WxScanStatus::BadArgument);
+        return std::ptr::null_mut();
+    };
+    if data.is_null() {
+        set(WxScanStatus::BadArgument);
+        return std::ptr::null_mut();
+    }
+    let bytes = std::slice::from_raw_parts(data, len);
+
+    // with_guessed_format on a Cursor reads from memory and cannot fail for
+    // want of I/O, so the only way past here is a format question.
+    let Ok(reader) =
+        image::ImageReader::new(std::io::Cursor::new(bytes)).with_guessed_format()
+    else {
+        set(WxScanStatus::UnsupportedFormat);
+        return std::ptr::null_mut();
+    };
+    decode_and_scan(scanner, reader, set)
+}
+
+/// Decode an image and scan it, however its bytes were reached.
+///
+/// Shared by [`wxscan_scan_path`] and [`wxscan_scan_bytes`]: once there is a
+/// reader, a file and a buffer are the same problem, and the EXIF handling
+/// below is the part worth having in one place rather than two.
+#[cfg(feature = "image-io")]
+fn decode_and_scan<R: BufRead + Seek>(
+    scanner: &WxScanScanner,
+    reader: image::ImageReader<R>,
+    set: impl Fn(WxScanStatus),
+) -> *mut WxScanResults {
     let Ok(decoder) = reader.into_decoder() else {
         set(WxScanStatus::UnsupportedFormat);
         return std::ptr::null_mut();
