@@ -7,10 +7,10 @@ and the four corner coordinates are compared image by image.
 ## Environment
 
 ```bash
-python3 -m venv venv  && ./venv/bin/pip install -r ../../../wxscan-weights/tools/requirements.txt segno pillow
+python3 -m venv venv  && ./venv/bin/pip install opencv-contrib-python numpy segno pillow
 # Reference implementation: OpenCV 5.x removed the Caffe importer, so parity
 # runs with models require 4.x
-python3 -m venv venv4 && ./venv4/bin/pip install -r ../../../wxscan-weights/tools/requirements-ref.txt
+python3 -m venv venv4 && ./venv4/bin/pip install opencv-contrib-python==4.10.0.84 numpy
 ```
 
 ## Running
