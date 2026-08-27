@@ -1,0 +1,49 @@
+# What this library is allowed to link.
+#
+# Separate from the build workflows because it checks a different kind of thing,
+# and because it has to fail on its own terms: an AGPL dependency compiles
+# perfectly, passes its tests and is invisible at run time. One went in — an
+# HEIC decoder, faster than the alternative — and would have put every
+# application shipping wxscan under the AGPL. A licence is the one property of a
+# dependency that nothing else catches.
+#
+# On pull requests as well as pushes: the point is to fail before a dependency
+# lands, not after.
+name: licences
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deny:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: wxscan-rs }
+
+      # cvlite and wxing are not on crates.io yet, so they are checked out
+      # beside this one and patched in exactly as the build workflows do.
+      # Without them cargo cannot resolve, and a check that cannot resolve
+      # reports nothing rather than failing.
+      - uses: actions/checkout@v4
+        with: { repository: wilinz/cvlite, path: cvlite }
+      - uses: actions/checkout@v4
+        with: { repository: wilinz/wxing, path: wxing }
+
+      - name: Patch in the siblings
+        working-directory: wxscan-rs
+        run: |
+          mkdir -p .cargo
+          printf '[patch.crates-io]\ncvlite = { path = "../cvlite" }\nwxing = { path = "../wxing" }\n' \
+            > .cargo/config.toml
+
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          manifest-path: wxscan-rs/Cargo.toml
+          command: check licenses
