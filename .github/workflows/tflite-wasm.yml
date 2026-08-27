@@ -5,11 +5,14 @@
 # That one runs on every push and takes seconds; this clones TensorFlow, fetches
 # a dozen dependencies and compiles about a thousand XNNPACK microkernels.
 #
-# So it runs on a tag and nothing else. `tflite-v2.17.1` builds TensorFlow
-# v2.17.1 and publishes it as the release for that same tag — the artifact is
-# anchored to a real ref, and the version is in the name because that, not a
-# commit, is what identifies this thing. Editing the build script does not
+# So it runs on a tag and nothing else. Editing the build script does not
 # trigger it: a change worth publishing is worth tagging.
+#
+# Which version is built is *not* in the tag. It is in
+# tools/tflite-wasm/tflite.toml, which build.sh reads too, so a local build and
+# this one cannot disagree. The tag has to name the same version, and the run
+# fails if it does not — it is a confirmation of what is being published, not a
+# second place to say it.
 #
 # workflow_dispatch stays for the case a tag's build fails, which would
 # otherwise mean deleting the tag and pushing it again.
@@ -19,11 +22,6 @@ on:
   push:
     tags: ['tflite-v*']
   workflow_dispatch:
-    inputs:
-      version:
-        description: TensorFlow version to build, e.g. v2.17.1
-        required: true
-        default: v2.17.1
 
 permissions:
   contents: write
@@ -39,23 +37,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # A tag says which version in its own name; a dispatch says so as an
-      # input. The tag it will publish under is the tag it came from, so a
-      # release cannot end up named for a version other than the one built.
+      # The configuration is the only source of the version. A tag that names
+      # a different one is a mistake worth stopping for: it would publish
+      # bytes under a name that does not describe them.
       - name: Settle the version
         id: v
         run: |
-          if [ "$GITHUB_REF_TYPE" = tag ]; then
-            tag="$GITHUB_REF_NAME"
-            version="${tag#tflite-}"
-          else
-            version='${{ inputs.version }}'
-            tag="tflite-$version"
+          version=$(sed -n 's/^[[:space:]]*version[[:space:]]*=[[:space:]]*"\(.*\)".*/\1/p' \
+            tools/tflite-wasm/tflite.toml | head -1)
+          [ -n "$version" ] || { echo "no version in tools/tflite-wasm/tflite.toml" >&2; exit 1; }
+          tag="tflite-$version"
+
+          if [ "$GITHUB_REF_TYPE" = tag ] && [ "$GITHUB_REF_NAME" != "$tag" ]; then
+            echo "the tag is $GITHUB_REF_NAME, but tflite.toml says $version." >&2
+            echo "Tag $tag, or change the version in tflite.toml first." >&2
+            exit 1
           fi
-          case "$version" in
-            v*) ;;
-            *) echo "expected a version like v2.17.1, got '$version'" >&2; exit 1 ;;
-          esac
+
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "building TensorFlow $version, publishing as $tag"

@@ -5,9 +5,16 @@ Lite C runtime with the XNNPACK delegate, compiled to WebAssembly, plus the
 small shim in [`host.cc`](host.cc) that
 [`wxscan-ffi`'s host backend](../../crates/wxscan-ffi/src/host_net.rs) talks to.
 
-The version matches the desktop build pinned in wxscan's `tool/tflite.lock`, so
-a browser runs the same runtime, and the same `.tflite` weights, as every other
-platform.
+The version lives in [`tflite.toml`](tflite.toml) beside the script, which both
+`build.sh` and the CI workflow read — one place, because it used to be two and
+nothing made them agree. It has to match the desktop build pinned in wxscan's
+`tool/tflite.lock`, so that a browser runs the same runtime, and the same
+`.tflite` weights, as every other platform.
+
+Changing that file is the whole of a version bump. Tagging `tflite-<version>`
+builds it and publishes it as the release for that tag; a tag naming a
+different version fails rather than publishing bytes under a name that does not
+describe them.
 
 ```sh
 source /path/to/emsdk/emsdk_env.sh

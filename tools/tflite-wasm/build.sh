@@ -6,13 +6,27 @@
 #   ./build.sh --ops             build dump_ops instead, to list a model's
 #                                operators when the weights change
 #
-# Needs emscripten and cmake. TENSORFLOW_VERSION matches the desktop build
-# pinned in wxscan's tool/tflite.lock, so the browser runs the same runtime as
-# every other platform.
+# Needs emscripten and cmake. The version comes from tflite.toml beside this
+# script, and has to match the desktop build pinned in wxscan's
+# tool/tflite.lock, so that the browser runs the same runtime as every other
+# platform. TENSORFLOW_VERSION overrides it, for trying one without committing
+# to it.
 set -euo pipefail
 
-TENSORFLOW_VERSION="${TENSORFLOW_VERSION:-v2.17.1}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
+
+# One key, read with sed rather than a TOML parser: a build script should not
+# need one, and the file is kept small enough that this is honest.
+tflite_config_version() {
+  sed -n 's/^[[:space:]]*version[[:space:]]*=[[:space:]]*"\(.*\)".*/\1/p' \
+    "$HERE/tflite.toml" | head -1
+}
+
+TENSORFLOW_VERSION="${TENSORFLOW_VERSION:-$(tflite_config_version)}"
+if [ -z "$TENSORFLOW_VERSION" ]; then
+  echo "no version in $HERE/tflite.toml, and TENSORFLOW_VERSION is not set" >&2
+  exit 1
+fi
 MODE=run
 if [ "${1:-}" = "--ops" ]; then MODE=ops; shift; fi
 OUT="${1:-$HERE/out}"
