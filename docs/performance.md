@@ -14,8 +14,9 @@ differences, maximum corner delta `0.000000 px`.
   200,000 times, and the `Instant::now()` calls alone would distort the result
   by 3 to 5 ms.
 - **Against the C++ original**: `pip install opencv-contrib-python==4.10.0.84`
-  and the Caffe models under `tools/model_conversion/models/`, run on the same
-  image and machine.
+  and the upstream Caffe models, which `tools/download_models.sh` in
+  [wxscan-weights](https://github.com/wilinz/wxscan-weights) fetches, run on the
+  same image and machine.
 - **Parity**: `tools/parity/`, see the README there.
 
 ## Test samples

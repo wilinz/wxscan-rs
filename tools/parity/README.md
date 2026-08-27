@@ -7,10 +7,10 @@ and the four corner coordinates are compared image by image.
 ## Environment
 
 ```bash
-python3 -m venv venv  && ./venv/bin/pip install -r ../model_conversion/requirements.txt segno pillow
+python3 -m venv venv  && ./venv/bin/pip install -r ../../../wxscan-weights/tools/requirements.txt segno pillow
 # Reference implementation: OpenCV 5.x removed the Caffe importer, so parity
 # runs with models require 4.x
-python3 -m venv venv4 && ./venv4/bin/pip install -r ../model_conversion/requirements-ref.txt
+python3 -m venv venv4 && ./venv4/bin/pip install -r ../../../wxscan-weights/tools/requirements-ref.txt
 ```
 
 ## Running
@@ -29,7 +29,9 @@ python3 -m venv venv4 && ./venv4/bin/pip install -r ../model_conversion/requirem
 
 For the path that uses the CNN models: `gen_scene.py` generates small codes
 inside large images, `run_cpp_nn.py` produces the reference output (it needs
-venv4 and the Caffe models under tools/model_conversion/models), and the Rust
+venv4 and the upstream Caffe models, which `tools/download_models.sh` in
+[wxscan-weights](https://github.com/wilinz/wxscan-weights) fetches; pass their
+directory as its third argument if that checkout is not next to this one), and the Rust
 side runs
 `cargo run --features tflite --example dump_nn -- <detect.tflite> <sr.tflite> scenes/*.png`.
 
