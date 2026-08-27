@@ -42,6 +42,22 @@ if [ -z "$EMSDK" ] && ! command -v emcc >/dev/null; then
 fi
 EMCC="${EMSDK:+$EMSDK/upstream/emscripten/}"
 
+# Where the build happened must not end up in what it produced. TFLite's
+# TF_LITE_KERNEL_LOG and TFLITE_DCHECK put __FILE__ in the binary, so without
+# this the module carries the absolute path of whoever built it — 29 of them,
+# about 2.6 KB — and the same sources at the same version give different bytes
+# from a different directory. Under clang -ffile-prefix-map covers __FILE__ as
+# well as debug info, so one flag does it.
+#
+# The more specific mapping comes first, because $WORK is normally inside
+# $HERE. Either way round both land somewhere fixed: with first-match $WORK
+# wins, and with last-match $HERE rewrites its own subtree to the same place.
+#
+# This makes a rebuild independent of the directory, not reproducible outright.
+# The emscripten version still decides the rest, and it is recorded in
+# wxscan_tflite.build beside the module.
+PREFIX_MAP="-ffile-prefix-map=$WORK=/wxscan/work -ffile-prefix-map=$HERE=/wxscan/src"
+
 mkdir -p "$WORK" "$OUT"
 
 # ---- sources ---------------------------------------------------------------
@@ -67,8 +83,8 @@ configure() {
     -DTHREADS_PREFER_PTHREAD_FLAG=OFF \
     -DCMAKE_THREAD_LIBS_INIT= \
     -DCMAKE_USE_PTHREADS_INIT=1 \
-    -DCMAKE_C_FLAGS="-msimd128" \
-    -DCMAKE_CXX_FLAGS="-msimd128" >/dev/null
+    -DCMAKE_C_FLAGS="-msimd128 $PREFIX_MAP" \
+    -DCMAKE_CXX_FLAGS="-msimd128 $PREFIX_MAP" >/dev/null
 }
 
 # XNNPACK's CMake build has no wasm support at all upstream: it generates the
@@ -103,10 +119,10 @@ cmake --build "$WORK/build" -j "$(sysctl -n hw.ncpu 2>/dev/null || nproc)" --tar
 # compiles its emscripten backend.
 "${EMCC}em++" -c "$WORK/build/flatbuffers/src/util.cpp" \
   -I"$WORK/build/flatbuffers/include" -DFLATBUFFERS_LOCALE_INDEPENDENT=1 \
-  -O2 -msimd128 -o "$WORK/fb_util.o"
+  -O2 -msimd128 $PREFIX_MAP -o "$WORK/fb_util.o"
 "${EMCC}emcc" -c "$WORK/build/cpuinfo/src/emscripten/init.c" \
   -I"$WORK/build/cpuinfo/include" -I"$WORK/build/cpuinfo/src" \
-  -DCPUINFO_LOG_LEVEL=2 -O2 -o "$WORK/cpuinfo_em.o"
+  -DCPUINFO_LOG_LEVEL=2 -O2 $PREFIX_MAP -o "$WORK/cpuinfo_em.o"
 
 # `-Oz` buys little on its own, the archives having been compiled at -O3
 # already; the size is in what gets linked. `ENVIRONMENT=worker` is what the
@@ -117,7 +133,7 @@ LIBS=$(find "$WORK/build/_deps" "$WORK/build/xnnpack" "$WORK/build/pthreadpool" 
 COMMON="-I$WORK/tensorflow -I$WORK/build/flatbuffers/include
   $WORK/fb_util.o $WORK/cpuinfo_em.o
   $WORK/build/tensorflow-lite/libtensorflow-lite.a $LIBS
-  -Oz -msimd128 -s MODULARIZE=1 -s EXPORT_ES6=1
+  -Oz -msimd128 $PREFIX_MAP -s MODULARIZE=1 -s EXPORT_ES6=1
   -s ALLOW_MEMORY_GROWTH=1 -s STACK_SIZE=8MB -s INITIAL_MEMORY=64MB
   -s MALLOC=emmalloc -s FILESYSTEM=0"
 

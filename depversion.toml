@@ -20,9 +20,9 @@
 # it stays put. Raise it whenever they do, or two different runtimes end up
 # sharing one name.
 #
-# Together they name a release: tflite-v2.17.1-p1. Changing either here is the
+# Together they name a release: tflite-v2.17.1-p2. Changing either here is the
 # whole of a version bump; the tflite-wasm workflow refuses a tag that does not
 # match, and builds nothing until one does.
 [tensorflow]
 version = "v2.17.1"
-patch = 1
+patch = 2
