@@ -10,9 +10,9 @@
 #
 #   * The scanner is this repository's own code. It is built on every push,
 #     because that is when it changes, and it takes seconds.
-#   * The TensorFlow Lite runtime is a dependency, pinned in
-#     tools/tflite-wasm/tflite.toml. It is built only for a release, because it
-#     is eight minutes of emscripten and it changes only when that file does.
+#   * The TensorFlow Lite runtime is a dependency, pinned in depversion.toml.
+#     It is built only for a release, because it is eight minutes of emscripten
+#     and it changes only when that file does.
 #
 # A tag is a version of this library — v0.1.0, not the version of anything it
 # depends on — and its release carries everything a browser needs at that
@@ -67,8 +67,8 @@ jobs:
         working-directory: wxscan-rs
         run: |
           v=$(sed -n 's/^[[:space:]]*version[[:space:]]*=[[:space:]]*"\(.*\)".*/\1/p' \
-            tools/tflite-wasm/tflite.toml | head -1)
-          [ -n "$v" ] || { echo "no version in tools/tflite-wasm/tflite.toml" >&2; exit 1; }
+            depversion.toml | head -1)
+          [ -n "$v" ] || { echo "no [tensorflow] version in depversion.toml" >&2; exit 1; }
           echo "version=$v" >> "$GITHUB_OUTPUT"
 
       - uses: mymindstorm/setup-emsdk@v14

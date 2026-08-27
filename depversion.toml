@@ -1,0 +1,16 @@
+# The versions of things this library builds against but does not contain.
+#
+# At the root, and not beside whichever script consumes one, because a pinned
+# dependency version is a fact about the library rather than about a build: it
+# used to live in build.sh as a default and again in a CI tag, and nothing made
+# the two agree. Everything that needs one reads it here.
+#
+# version.txt beside this file is the other half of the pair — that is this
+# library's own version, the one a tag carries.
+
+# Has to match DESKTOP_VERSION in the wxscan package's tool/tflite.lock, or a
+# browser runs a different runtime from every other platform; that package's
+# tool/check_tflite_web.sh is what says so. Changing it here is the whole of a
+# version bump: the next release builds and publishes the new runtime.
+[tensorflow]
+version = "v2.17.1"

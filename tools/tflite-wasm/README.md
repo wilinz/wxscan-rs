@@ -5,9 +5,11 @@ Lite C runtime with the XNNPACK delegate, compiled to WebAssembly, plus the
 small shim in [`host.cc`](host.cc) that
 [`wxscan-ffi`'s host backend](../../crates/wxscan-ffi/src/host_net.rs) talks to.
 
-The version lives in [`tflite.toml`](tflite.toml) beside the script, which both
-`build.sh` and the CI workflow read — one place, because it used to be two and
-nothing made them agree. It has to match the desktop build pinned in wxscan's
+The version lives in [`depversion.toml`](../../depversion.toml) at the top of
+the repository, which both `build.sh` and the CI workflow read — one place,
+because it used to be two and nothing made them agree, and at the root because
+it is a fact about the library rather than about this build. It has to match
+the desktop build pinned in wxscan's
 `tool/tflite.lock`, so that a browser runs the same runtime, and the same
 `.tflite` weights, as every other platform.
 
