@@ -29,7 +29,7 @@ python3 -m venv venv4 && ./venv4/bin/pip install opencv-contrib-python==4.10.0.8
 
 For the path that uses the CNN models: `gen_scene.py` generates small codes
 inside large images, `run_cpp_nn.py` produces the reference output (it needs
-venv4 and the upstream Caffe models, which `tools/1_download_models.sh` in
+venv4 and the upstream Caffe models, which `tools/convert.py download` in
 [wxscan-weights](https://github.com/wilinz/wxscan-weights) fetches; pass their
 directory as its third argument if that checkout is not next to this one), and the Rust
 side runs
