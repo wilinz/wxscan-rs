@@ -48,12 +48,12 @@ impl<N: Net> SSDDetector<N> {
         target_width: usize,
         target_height: usize,
     ) -> Result<Vec<QuadPoints>, String> {
-        let t0 = std::time::Instant::now();
+        let t0 = crate::clock::Instant::now();
         let input = resize(img, img_w, img_h, target_width, target_height, Interpolation::Cubic);
         let blob = blob_from_gray(&input, 1.0 / 255.0);
-        let t1 = std::time::Instant::now();
+        let t1 = crate::clock::Instant::now();
         let outs = self.net.forward(&blob, &[1, 1, target_height, target_width])?;
-        let t2 = std::time::Instant::now();
+        let t2 = crate::clock::Instant::now();
         if outs.len() < 2 {
             return Err(format!("detect model should have 2 outputs, got {}", outs.len()));
         }
@@ -67,7 +67,7 @@ impl<N: Net> SSDDetector<N> {
             (&outs[1].data, &outs[0].data)
         };
 
-        let t3 = std::time::Instant::now();
+        let t3 = crate::clock::Instant::now();
         let priors = generate_all_priors(target_width, target_height);
         if priors.len() * 4 != loc.len() {
             return Err(format!(
@@ -77,9 +77,9 @@ impl<N: Net> SSDDetector<N> {
             ));
         }
 
-        let t4 = std::time::Instant::now();
+        let t4 = crate::clock::Instant::now();
         let dets = detection_forward(loc, conf, &priors, &self.params);
-        let t5 = std::time::Instant::now();
+        let t5 = crate::clock::Instant::now();
         crate::detector::ssd_detector::record_stage_us(
             (t1 - t0).as_micros() as u64,
             (t2 - t1).as_micros() as u64,

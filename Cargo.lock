@@ -1531,6 +1531,14 @@ name = "wxscan-tflite"
 version = "0.1.0"
 
 [[package]]
+name = "wxscan-wasm"
+version = "0.1.0"
+dependencies = [
+ "getrandom 0.2.17",
+ "wxscan-ffi",
+]
+
+[[package]]
 name = "xattr"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

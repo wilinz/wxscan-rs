@@ -12,9 +12,16 @@
 //! global lock.
 
 mod c_api;
+// Only wasm has a host to call, so the imports and the `Net` implementation
+// are wasm-only; the wire format they agree on is not, and is parsed and
+// tested everywhere.
+#[cfg(feature = "host-net")]
+mod host_net;
 mod results;
 mod scanner;
 
 pub use c_api::*;
+#[cfg(all(feature = "host-net", target_arch = "wasm32"))]
+pub use host_net::*;
 pub use results::*;
 pub use scanner::*;

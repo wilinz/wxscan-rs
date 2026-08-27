@@ -11,6 +11,8 @@
 #               that the only C dependency is confined to it. The alternative,
 #               tract, is pure Rust and needs no crate of its own.
 #   wxscan-ffi  The C ABI, for callers outside Rust.
+#   wxscan-wasm The same ABI as a WebAssembly module, for browsers. Not
+#               published: its artifact is a .wasm file, not a crate.
 #
 # The two pieces that are *not* WeChat specific live in their own repositories,
 # because they are useful to anyone:
@@ -26,6 +28,7 @@ members = [
     "crates/wxscan",
     "crates/wxscan-tflite",
     "crates/wxscan-ffi",
+    "crates/wxscan-wasm",
 ]
 
 [workspace.package]
@@ -37,3 +40,14 @@ rust-version = "1.75"
 
 [profile.release]
 opt-level = 3
+
+# The browser build. `opt-level = 3` because the module runs a CNN and size is
+# the lesser cost, but with debug information stripped and one codegen unit,
+# which together take about two thirds off. Panics abort: unwinding tables are
+# dead weight when no caller can catch a panic across the wasm boundary.
+[profile.wasm]
+inherits = "release"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"

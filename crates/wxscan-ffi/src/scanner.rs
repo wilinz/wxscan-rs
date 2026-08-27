@@ -16,6 +16,9 @@ pub(crate) enum Backend {
     Tflite(wxscan::tflite::TfliteNet),
     #[cfg(feature = "tract")]
     Tract(wxscan::backend::tract::TractNet),
+    /// Inference happens outside this library; see [`crate::host_net`].
+    #[cfg(all(feature = "host-net", target_arch = "wasm32"))]
+    Host(crate::host_net::HostNet),
 }
 
 impl Net for Backend {
@@ -26,7 +29,9 @@ impl Net for Backend {
             Backend::Tflite(n) => n.forward(input, shape),
             #[cfg(feature = "tract")]
             Backend::Tract(n) => n.forward(input, shape),
-            #[cfg(not(any(feature = "tflite", feature = "tract")))]
+            #[cfg(all(feature = "host-net", target_arch = "wasm32"))]
+            Backend::Host(n) => n.forward(input, shape),
+            #[cfg(not(any(feature = "tflite", feature = "tract", all(feature = "host-net", target_arch = "wasm32"))))]
             _ => Err("wxscan: built without an inference backend".to_string()),
         }
     }
@@ -107,6 +112,26 @@ pub unsafe extern "C" fn wxscan_scanner_new(
 
     Box::into_raw(Box::new(WxScanScanner {
         inner: Mutex::new(WeChatQRCode::new(detect, sr)),
+    }))
+}
+
+/// Create a scanner whose inference runs in the host, for the wasm build.
+///
+/// The weights are never passed in: the host holds them, and each flag says
+/// only whether that network is available. Passing zero for both is the mode
+/// without models, exactly as for [`wxscan_scanner_new`].
+///
+/// Release with [`wxscan_scanner_free`].
+#[cfg(all(feature = "host-net", target_arch = "wasm32"))]
+#[no_mangle]
+pub extern "C" fn wxscan_scanner_new_host(has_detector: i32, has_sr: i32) -> *mut WxScanScanner {
+    let detect = (has_detector != 0).then(crate::host_net::HostNet::detector);
+    let sr = (has_sr != 0).then(crate::host_net::HostNet::super_resolution);
+    Box::into_raw(Box::new(WxScanScanner {
+        inner: Mutex::new(WeChatQRCode::new(
+            detect.map(Backend::Host),
+            sr.map(Backend::Host),
+        )),
     }))
 }
 

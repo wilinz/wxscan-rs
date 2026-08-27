@@ -29,6 +29,8 @@
 //! <https://github.com/wilinz/wxscan-weights>, which also holds the scripts
 //! that convert them from the upstream Caffe models.
 
+mod clock;
+
 pub mod backend;
 pub mod decodermgr;
 pub mod frame;

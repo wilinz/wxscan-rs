@@ -25,6 +25,9 @@ default = ["tflite"]
 # is tried as TFLite and then as ONNX, so one binary takes either format.
 tflite = ["wxscan/tflite"]
 tract = ["wxscan/tract"]
+# Inference by the host rather than by this library, for the wasm build: see
+# the `host_net` module. Costs nothing in size, since it compiles no engine.
+host-net = []
 
 [dependencies]
 cvlite = "0.1.0"

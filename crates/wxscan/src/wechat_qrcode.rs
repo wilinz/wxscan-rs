@@ -158,11 +158,11 @@ impl<N: Net> WeChatQRCode<N> {
         if width <= 20 || height <= 20 {
             return (Vec::new(), 0, 0);
         }
-        let t0 = std::time::Instant::now();
+        let t0 = crate::clock::Instant::now();
         let candidates = self.detect(img, width, height);
-        let t1 = std::time::Instant::now();
+        let t1 = crate::clock::Instant::now();
         let results = self.decode(img, width, height, &candidates);
-        let t2 = std::time::Instant::now();
+        let t2 = crate::clock::Instant::now();
         (
             results,
             (t1 - t0).as_micros() as u64,
@@ -235,7 +235,7 @@ impl<N: Net> WeChatQRCode<N> {
             };
 
             for cur_scale in get_scale_list(cw, ch) {
-                let ts0 = std::time::Instant::now();
+                let ts0 = crate::clock::Instant::now();
                 let (scaled, sw, sh) = self.super_resolution.process_image_scale(
                     &cropped,
                     cw,
@@ -244,10 +244,10 @@ impl<N: Net> WeChatQRCode<N> {
                     self.use_nn_sr,
                     160,
                 );
-                let ts1 = std::time::Instant::now();
+                let ts1 = crate::clock::Instant::now();
                 let mut mgr = DecoderMgr::new();
                 let decoded_opt = mgr.decode_image(&scaled, sw, sh, self.use_nn_detector);
-                let ts2 = std::time::Instant::now();
+                let ts2 = crate::clock::Instant::now();
                 record_decode_stage_us(
                     (ts1 - ts0).as_micros() as u64,
                     (ts2 - ts1).as_micros() as u64,

@@ -1,0 +1,34 @@
+[package]
+name = "wxscan-wasm"
+description = "The wxscan C ABI as a WebAssembly module, for browsers"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+readme = "README.md"
+# The artifact is a .wasm file, not something a Rust caller depends on.
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[features]
+# The host runs inference — LiteRT.js and the same .tflite weights as the
+# native build, or any other engine — reached through two wasm imports. This is
+# the default because it is what keeps the module at a quarter of a megabyte.
+default = ["host-net"]
+host-net = ["wxscan-ffi/host-net"]
+# The alternative: tract runs ONNX weights inside the module, with no
+# JavaScript involved at all, for 12 MB rather than 242 KB.
+tract = ["wxscan-ffi/tract"]
+# Report panics to the host through a `wxscan_host_log` import, which otherwise
+# vanish: a wasm module has nowhere to print. Development only — enabling it
+# gives the module an import, so a host that does not supply one cannot
+# instantiate it.
+debug-log = []
+[dependencies]
+wxscan-ffi = { path = "../wxscan-ffi", version = "0.1.0", default-features = false }
+# tract pulls getrandom in transitively, which refuses to build for
+# wasm32-unknown-unknown unless it is told where randomness comes from.
+getrandom = { version = "0.2", features = ["custom"] }
