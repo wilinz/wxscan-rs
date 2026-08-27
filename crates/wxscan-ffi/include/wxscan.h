@@ -115,6 +115,43 @@ typedef struct WxScanResults {
   uint32_t height;
 } WxScanResults;
 
+/**
+ * A decoder the host lends to this library.
+ *
+ * Both function pointers are required; a struct with either missing is
+ * rejected rather than half-installed.
+ */
+typedef struct WxScanImageDecoder {
+  /**
+   * Decode `data`, which is an encoded image file.
+   *
+   * Returns 1 on success, having written a pixel buffer and its shape
+   * through the out parameters, and 0 for anything it does not recognise —
+   * which is not an error, only an answer.
+   *
+   * `out_format` is a [`WxScanPixelFormat`]. Rows must be tightly packed.
+   * The orientation recorded in the file is the host's to apply, since the
+   * system decoders do it as a matter of course and this library cannot
+   * tell whether it happened.
+   */
+  int32_t (*decode)(const uint8_t *data,
+                    size_t len,
+                    const uint8_t **out_pixels,
+                    uint32_t *out_width,
+                    uint32_t *out_height,
+                    int32_t *out_format,
+                    void *ctx);
+  /**
+   * Release a buffer a successful `decode` handed over. Called exactly once
+   * per success, before the scan returns.
+   */
+  void (*release)(const uint8_t *pixels, void *ctx);
+  /**
+   * Passed back to both functions untouched.
+   */
+  void *ctx;
+} WxScanImageDecoder;
+
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
@@ -252,6 +289,26 @@ struct WxScanResults *wxscan_scan_bytes(const struct WxScanScanner *scanner,
  * Link probe: returns 1 when the library is linked in correctly.
  */
 int32_t wxscan_ping(void);
+
+/**
+ * Lend this library a decoder for formats it does not carry, or pass NULL to
+ * take one back.
+ *
+ * It is consulted only after the built-in decoders have declined, so it
+ * cannot change how a png, jpeg or gif is read. A caller that registers
+ * nothing keeps exactly the previous behaviour: unknown bytes come back as
+ * `WxScanStatus::UnsupportedFormat`.
+ *
+ * Register once at start-up. The functions may be called from any thread the
+ * caller scans on, and from more than one at a time, so they must be safe to
+ * call that way — the system decoders named in this module's documentation
+ * all are.
+ *
+ * # Safety
+ * `decoder`, when not NULL, must point to a readable [`WxScanImageDecoder`]
+ * whose function pointers stay valid until they are replaced or cleared.
+ */
+void wxscan_set_image_decoder(const struct WxScanImageDecoder *decoder);
 
 /**
  * Free a result set and everything it owns. Passing NULL is a no-op.

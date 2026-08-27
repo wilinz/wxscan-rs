@@ -28,12 +28,17 @@ tract = ["wxscan/tract"]
 # Inference by the host rather than by this library, for the wasm build: see
 # the `host_net` module. Costs nothing in size, since it compiles no engine.
 host-net = []
-# Reading an image file from a path, for `wxscan_scan_path`. Costs 436 KB of
-# decoders, measured on the arm64 macOS shared library, which is why it can be
-# turned off; the wasm build does, having no filesystem and counting every
-# kilobyte. The formats are the ones a photo picker actually writes — iOS
-# `image_picker` emits jpg, png or gif and nothing else — so bmp, webp and tiff
-# are left out, which alone saves 570 KB.
+# Reading an encoded image, for `wxscan_scan_path` and `wxscan_scan_bytes`.
+# Costs 436 KB of decoders, measured on the arm64 macOS shared library, which
+# is why it can be turned off; the wasm build does, having no filesystem, no
+# need — a browser decodes pictures itself — and every kilobyte to answer for.
+#
+# The formats are the ones a photo picker actually writes: iOS `image_picker`
+# emits jpg, png or gif and nothing else. Adding bmp, webp and tiff costs 570 KB
+# and buys the three formats nobody photographs anything in, so what is missing
+# is HEIC, which cannot be bought at any sensible price — it wants an HEVC
+# decoder. `wxscan_set_image_decoder` is the answer to that one: the platform
+# already has a decoder for everything it can display, and can lend it.
 image-io = ["dep:image"]
 
 [dependencies]

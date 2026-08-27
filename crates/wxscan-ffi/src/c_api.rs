@@ -8,8 +8,6 @@
 use std::ffi::c_char;
 #[cfg(feature = "image-io")]
 use image::ImageDecoder;
-#[cfg(feature = "image-io")]
-use std::io::{BufRead, Seek};
 
 use wxscan::frame::upright_gray;
 use crate::results::{into_c, WxScanResults};
@@ -71,7 +69,7 @@ pub enum WxScanPixelFormat {
 }
 
 impl WxScanPixelFormat {
-    fn from_raw(v: i32) -> Option<Self> {
+    pub(crate) fn from_raw(v: i32) -> Option<Self> {
         Some(match v {
             0 => Self::Gray,
             1 => Self::Rgb,
@@ -82,7 +80,7 @@ impl WxScanPixelFormat {
         })
     }
 
-    fn bytes_per_pixel(self) -> usize {
+    pub(crate) fn bytes_per_pixel(self) -> usize {
         match self {
             Self::Gray => 1,
             Self::Rgb | Self::Bgr => 3,
@@ -265,17 +263,19 @@ pub unsafe extern "C" fn wxscan_scan_path(
         return std::ptr::null_mut();
     };
 
-    // Opening and decoding are separate failures on purpose: a path that is not
+    // Reading and decoding are separate failures on purpose: a file that is not
     // there and a file this build has no decoder for want different answers
     // from the caller, and only the second is worth retrying another way.
-    let reader = match image::ImageReader::open(path).and_then(|r| r.with_guessed_format()) {
-        Ok(r) => r,
-        Err(_) => {
-            set(WxScanStatus::Unreadable);
-            return std::ptr::null_mut();
-        }
+    //
+    // The whole file is read rather than streamed into the decoder, so that
+    // the bytes are still in hand if the built-in decoders decline and a host
+    // decoder has to be offered them. A picture is small next to the pixels it
+    // becomes.
+    let Ok(bytes) = std::fs::read(path) else {
+        set(WxScanStatus::Unreadable);
+        return std::ptr::null_mut();
     };
-    decode_and_scan(scanner, reader, set)
+    scan_encoded(scanner, &bytes, set)
 }
 
 /// Decode an encoded image already in memory and scan it.
@@ -327,48 +327,66 @@ pub unsafe extern "C" fn wxscan_scan_bytes(
     }
     let bytes = std::slice::from_raw_parts(data, len);
 
-    // with_guessed_format on a Cursor reads from memory and cannot fail for
-    // want of I/O, so the only way past here is a format question.
-    let Ok(reader) =
-        image::ImageReader::new(std::io::Cursor::new(bytes)).with_guessed_format()
-    else {
-        set(WxScanStatus::UnsupportedFormat);
-        return std::ptr::null_mut();
-    };
-    decode_and_scan(scanner, reader, set)
+    scan_encoded(scanner, bytes, set)
 }
 
-/// Decode an image and scan it, however its bytes were reached.
+/// Decode an encoded image and scan it, however its bytes were reached.
 ///
-/// Shared by [`wxscan_scan_path`] and [`wxscan_scan_bytes`]: once there is a
-/// reader, a file and a buffer are the same problem, and the EXIF handling
-/// below is the part worth having in one place rather than two.
+/// Shared by [`wxscan_scan_path`] and [`wxscan_scan_bytes`]: a file and a
+/// buffer are the same problem once the bytes are in hand, and the EXIF
+/// handling is worth having in one place rather than two.
+///
+/// The built-in decoders answer first. Only when they decline is a decoder the
+/// host lent through [`crate::wxscan_set_image_decoder`] offered the same
+/// bytes — so registering one cannot change how a png is read, and having none
+/// leaves the old answer, `UnsupportedFormat`.
 #[cfg(feature = "image-io")]
-fn decode_and_scan<R: BufRead + Seek>(
+fn scan_encoded(
     scanner: &WxScanScanner,
-    reader: image::ImageReader<R>,
+    bytes: &[u8],
     set: impl Fn(WxScanStatus),
 ) -> *mut WxScanResults {
-    let Ok(decoder) = reader.into_decoder() else {
-        set(WxScanStatus::UnsupportedFormat);
-        return std::ptr::null_mut();
-    };
+    if let Some((gray, w, h)) = decode_builtin(bytes) {
+        return scan_gray_buffer(scanner, &gray, w, h, set);
+    }
+    if let Some((gray, w, h)) = crate::host_image::decode_with_host(bytes) {
+        return scan_gray_buffer(scanner, &gray, w, h, set);
+    }
+    set(WxScanStatus::UnsupportedFormat);
+    std::ptr::null_mut()
+}
+
+/// The decoders compiled into this library: png, jpeg and gif.
+///
+/// None means "not one of ours", which is a question rather than a failure —
+/// the host may still know the format.
+#[cfg(feature = "image-io")]
+fn decode_builtin(bytes: &[u8]) -> Option<(Vec<u8>, usize, usize)> {
+    let reader = image::ImageReader::new(std::io::Cursor::new(bytes))
+        .with_guessed_format()
+        .ok()?;
+    let mut decoder = reader.into_decoder().ok()?;
     // Read before the decoder is consumed; a photograph usually stores its
     // pixels in the sensor's orientation and the rotation as a tag beside them.
-    let mut decoder = decoder;
     let orientation = decoder.orientation().ok();
-    let Ok(image) = image::DynamicImage::from_decoder(decoder) else {
-        set(WxScanStatus::UnsupportedFormat);
-        return std::ptr::null_mut();
-    };
-    let mut image = image;
+    let mut image = image::DynamicImage::from_decoder(decoder).ok()?;
     if let Some(orientation) = orientation {
         image.apply_orientation(orientation);
     }
-
     let gray = image.into_luma8();
     let (w, h) = (gray.width() as usize, gray.height() as usize);
-    let (results, candidates) = scanner.scan_upright(&gray.into_raw(), w, h);
+    Some((gray.into_raw(), w, h))
+}
+
+#[cfg(feature = "image-io")]
+fn scan_gray_buffer(
+    scanner: &WxScanScanner,
+    gray: &[u8],
+    w: usize,
+    h: usize,
+    set: impl Fn(WxScanStatus),
+) -> *mut WxScanResults {
+    let (results, candidates) = scanner.scan_upright(gray, w, h);
     set(WxScanStatus::Ok);
     into_c(results, candidates, w as u32, h as u32, None)
 }

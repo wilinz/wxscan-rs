@@ -17,11 +17,17 @@ mod c_api;
 // tested everywhere.
 #[cfg(feature = "host-net")]
 mod host_net;
+// A decoder the host lends for formats this library does not carry. It rides
+// with `image-io`, which is what owns the entry points that would consult it.
+#[cfg(feature = "image-io")]
+mod host_image;
 mod results;
 mod scanner;
 
 pub use c_api::*;
 #[cfg(all(feature = "host-net", target_arch = "wasm32"))]
 pub use host_net::*;
+#[cfg(feature = "image-io")]
+pub use host_image::*;
 pub use results::*;
 pub use scanner::*;
