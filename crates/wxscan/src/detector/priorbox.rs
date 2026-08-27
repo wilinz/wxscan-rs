@@ -92,19 +92,77 @@ pub fn generate_priors_for_layer(
     }
 }
 
+/// One dimension of the stride-16 feature map, by walking the downsampling the
+/// network actually performs rather than dividing by 16.
+///
+/// The two are not the same. The stem is a 3x3 stride-2 convolution with no
+/// padding, which loses a pixel: `(n - 1) / 2`. The three that follow are
+/// padded, so each is `ceil(n / 2)`. Dividing the input by 16 agrees with that
+/// for most sizes and quietly disagrees for others — 466 gives 30 that way and
+/// 29 this way — and every disagreement made the prior boxes outnumber the
+/// boxes the model returned, which failed the length check in
+/// [`crate::detector::ssd_detector`] and left the frame with no candidates at
+/// all. Deriving it costs four integer operations, so there is no reason to
+/// approximate it.
+fn feature_size_16(n: usize) -> usize {
+    let mut v = n.saturating_sub(1) / 2;
+    for _ in 0..3 {
+        v = v.div_ceil(2);
+    }
+    v
+}
+
 /// Derives the five feature layer sizes from the network input size and
 /// generates all prior boxes.
 ///
-/// The feature layers are downsampled from the input by 16, 32, 32, 32 and 32
-/// (stage4_8, stage5_4, stage6_2, stage7_2, stage8_2; the last four share a
-/// resolution).
+/// The five layers are stage4_8, stage5_4, stage6_2, stage7_2 and stage8_2; the
+/// last four share a resolution, one further halving down from the first.
 pub fn generate_all_priors(img_w: usize, img_h: usize) -> Vec<Prior> {
-    let strides = [16usize, 32, 32, 32, 32];
+    let (w16, h16) = (feature_size_16(img_w), feature_size_16(img_h));
+    let (w32, h32) = (w16.div_ceil(2), h16.div_ceil(2));
     let mut out = Vec::new();
-    for (spec, stride) in DETECT_PRIOR_SPECS.iter().zip(strides.iter()) {
-        let lw = img_w.div_ceil(*stride);
-        let lh = img_h.div_ceil(*stride);
+    for (i, spec) in DETECT_PRIOR_SPECS.iter().enumerate() {
+        let (lw, lh) = if i == 0 { (w16, h16) } else { (w32, h32) };
         generate_priors_for_layer(spec, lw, lh, img_w, img_h, &mut out);
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The expected values are the model's own, read off the length of the
+    /// `mbox_loc` tensor it returns for that input size, not derived from the
+    /// same arithmetic they are checking.
+    #[test]
+    fn the_prior_count_matches_what_the_model_returns() {
+        // (width, height, priors) — 400x400 is the size the automatic scale
+        // aims for, and 343x466 is a portrait photograph at that scale, which
+        // dividing the input by 16 got wrong: it claimed 7920.
+        for (w, h, expected) in [
+            (400, 400, 7806),
+            (343, 466, 7788),
+            (462, 346, 7788),
+            (800, 800, 30000),
+            (296, 296, 4566),
+        ] {
+            assert_eq!(
+                generate_all_priors(w, h).len(),
+                expected,
+                "{w}x{h}"
+            );
+        }
+    }
+
+    /// The stem convolution has no padding, so a dimension can land one short
+    /// of what dividing by 16 predicts. Both are listed to keep the difference
+    /// visible: it is the whole point of walking the chain.
+    #[test]
+    fn the_feature_map_follows_the_network_not_a_division() {
+        for (input, expected) in [(400, 25), (343, 22), (466, 29), (800, 50), (296, 19)] {
+            assert_eq!(feature_size_16(input), expected, "input {input}");
+        }
+        assert_ne!(feature_size_16(466), 466usize.div_ceil(16));
+    }
 }
