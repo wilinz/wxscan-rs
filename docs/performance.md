@@ -118,6 +118,52 @@ useful later.
   lower rate, skipping FastWindow, or capping the candidate count — and each
   costs detection rate.
 
+## In a browser
+
+The same algorithm compiled to WebAssembly, running in a worker, on a
+1920x1080 parity scene with one code in it. Native and browser numbers are the
+same machine and the same weights; the browser is Chrome, and the native column
+is the `bench` example.
+
+| | C++ original | Rust, native | Rust, wasm |
+|---|---|---|---|
+| Whole frame, with models | 218.0 ms | **130.4 ms** | **214 ms** |
+| Whole frame, no models | 8.4 ms | 5.1 ms | 20 ms |
+| SSD forward | — | 3.1 ms | 8 ms |
+
+So the port is about 1.65 times faster than the implementation it came from,
+and a browser gives that back: a browser and the C++ original land in the same
+place, which is a reasonable way to think about what the web build costs.
+
+The loss is not spread evenly. Inference is 2.6 times slower, which is a good
+showing for XNNPACK compiled to wasm; the decoder is 3.9 times slower and is
+where the web actually loses. That the whole frame is only 1.64 times slower
+is arithmetic rather than good news: with models, most of the frame is the
+decode ladder run repeatedly, and the ladder's relative disadvantage is diluted
+by everything else it waits on.
+
+Three causes, in the order they cost:
+
+1. **No threads.** `gaussian_blur_8u` in cvlite splits into up to four, and on
+   `wasm32-unknown-unknown` `available_parallelism` fails and it runs one. On
+   the adaptive threshold alone that is 8.76 ms against 10.89 ms — most of the
+   remaining gap on that kernel. Recovering it means wasm threads, which means
+   asking every page that embeds the scanner to serve COOP and COEP headers.
+2. **What wasm costs anyway.** Bounds checks, no FMA. Roughly 1.3x on the same
+   single-threaded code.
+3. **Vector paths.** Only one was missing: the 2x2 area downscale had a NEON
+   path and no wasm one, which cost 1.81 ms against 0.83 ms until
+   [cvlite](https://github.com/wilinz/cvlite) grew one and it became 0.65 ms.
+   The adaptive threshold has no hand-written path on any target — LLVM's own
+   vectorisation takes it from 28.15 ms to 10.89 ms once `simd128` is on — so
+   there is nothing left to write there.
+
+Measuring in a browser needs care in two places. `Instant::now` aborts on
+wasm, so the profiling counters read zero and the timing has to come from
+`performance.now` outside the module. And a microbenchmark that only reads
+`.len()` of a result lets the optimiser delete the work it was meant to
+measure; the numbers above hash the output instead.
+
 ## Inference backends
 
 The `tract` feature runs the same models in pure Rust, with no C dependency.
