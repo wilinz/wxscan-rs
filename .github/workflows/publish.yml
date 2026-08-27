@@ -70,6 +70,10 @@ jobs:
             depversion.toml | head -1)
           [ -n "$v" ] || { echo "no [tensorflow] version in depversion.toml" >&2; exit 1; }
           echo "version=$v" >> "$GITHUB_OUTPUT"
+          # What is built from that version: the script and the patches. Named
+          # so that a runtime can be told apart from another one carrying the
+          # same TensorFlow version but a different recipe.
+          echo "recipe=${{ hashFiles('wxscan-rs/tools/tflite-wasm/build.sh', 'wxscan-rs/tools/tflite-wasm/patches/*') }}" >> "$GITHUB_OUTPUT"
 
       - uses: mymindstorm/setup-emsdk@v14
         if: github.ref_type == 'tag'
@@ -80,12 +84,21 @@ jobs:
       # The tree TensorFlow and its dependencies are fetched into. Restoring it
       # turns a rebuild into a few minutes; a miss builds from nothing, which
       # is what the first release does anyway.
+      #
+      # The key is the whole recipe, not just the version: the script and the
+      # patches decide what comes out of that tree as much as the version does,
+      # and they change while it stays put. There are deliberately no
+      # restore-keys. A near-miss is the dangerous case, not the cheap one —
+      # build.sh skips the clone and the first patch when $WORK/tensorflow is
+      # already there, and $WORK/build keeps the cmake flags it was configured
+      # with, so an older tree restored under a new recipe quietly builds the
+      # old thing under the new name. Fifteen minutes is the right price for
+      # changing a patch.
       - uses: actions/cache@v4
         if: github.ref_type == 'tag'
         with:
           path: wxscan-rs/tools/tflite-wasm/.work
-          key: tflite-${{ steps.tf.outputs.version }}-${{ hashFiles('wxscan-rs/tools/tflite-wasm/build.sh', 'wxscan-rs/tools/tflite-wasm/patches/*') }}
-          restore-keys: tflite-${{ steps.tf.outputs.version }}-
+          key: tflite-${{ steps.tf.outputs.version }}-${{ steps.tf.outputs.recipe }}
 
       - name: Build the TensorFlow Lite runtime
         if: github.ref_type == 'tag'
@@ -107,6 +120,7 @@ jobs:
             echo "sha256_scanner=$(sha256sum $out/wxscan_wasm.wasm | cut -d' ' -f1)"
             if [ -f "$out/wxscan_tflite.wasm" ]; then
               echo "tensorflow=${{ steps.tf.outputs.version }}"
+              echo "tflite_recipe=${{ steps.tf.outputs.recipe }}"
               echo "emscripten=$(emcc --version | head -1)"
               echo "sha256_tflite_js=$(sha256sum $out/wxscan_tflite.js | cut -d' ' -f1)"
               echo "sha256_tflite_wasm=$(sha256sum $out/wxscan_tflite.wasm | cut -d' ' -f1)"
