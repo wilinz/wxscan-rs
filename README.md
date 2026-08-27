@@ -28,7 +28,6 @@ it runs them on, and the C ABI is its surface.
 |---|---|
 | [`wxscan`](crates/wxscan) | CNN detection, super resolution, and the orchestration around them. This is the complete algorithm. |
 | [`wxscan-tflite`](crates/wxscan-tflite) | The tflite binding, used as the default inference backend. Separate so the only C dependency is confined to it. |
-| [`wxscan-models`](crates/wxscan-models) | The prebuilt weights, in TFLite and ONNX form, kept separate so callers supplying their own do not download them. |
 | [`wxscan-ffi`](crates/wxscan-ffi) | The C ABI, for callers outside Rust. Generates `include/wxscan.h` with cbindgen. |
 
 ## Usage
@@ -47,10 +46,11 @@ for result in scanner.detect_and_decode_gray(&gray, width, height) {
 }
 ```
 
-With the `bundled-models` feature the weights come from `wxscan-models`:
+The weights are in no crate. Take the prebuilt ones from
+[wxscan-weights](https://github.com/wilinz/wxscan-weights), or supply your own:
 
 ```rust
-let detect = wxscan::tflite::TfliteNet::from_bytes(wxscan::models::tflite::DETECT)?;
+let detect = wxscan::tflite::TfliteNet::from_bytes(&std::fs::read("detect.tflite")?)?;
 ```
 
 ## Inference backends
@@ -60,15 +60,15 @@ knows which library runs it. Two backends ship, both in `wxscan::backend`:
 
 | Feature | Engine | Weights | C dependency |
 |---|---|---|---|
-| `tflite` (default) | `wxscan-tflite` | `models::tflite` | libtensorflowlite_c |
-| `tract` | [tract](https://crates.io/crates/tract-onnx) | `models::onnx` | none |
+| `tflite` (default) | `wxscan-tflite` | `detect.tflite`, `sr.tflite` | libtensorflowlite_c |
+| `tract` | [tract](https://crates.io/crates/tract-onnx) | `detect.onnx`, `sr.onnx` | none |
 
 The tflite adapter is also where layout conversion lives, since tflite is NHWC
 while the trait contract is NCHW. tract needs none: ONNX is NCHW, like the Caffe
 models both formats are converted from.
 
 ```toml
-wxscan = { version = "0.1", default-features = false, features = ["tract", "bundled-models"] }
+wxscan = { version = "0.1", default-features = false, features = ["tract"] }
 ```
 
 tract builds and runs anywhere cargo does, at some cost in speed against
@@ -117,8 +117,9 @@ coordinates are bit-identical on all but two, which differ at sub-pixel level.
 The remaining differences trace to `cv::adaptiveThreshold`, where OpenCV uses a
 fixed-point separable filter for 8U images while this port accumulates in f32.
 
-`tools/model_conversion` rebuilds the TFLite models from the published Caffe
-weights.
+The [wxscan-weights](https://github.com/wilinz/wxscan-weights) repository holds
+the prebuilt weights and the scripts that rebuild them from the published Caffe
+models.
 
 ## Performance
 

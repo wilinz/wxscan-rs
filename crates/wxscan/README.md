@@ -31,12 +31,13 @@ resolution stage, and the orchestration around them.
 
 ## Models
 
-The weights are not part of this crate. Enable `bundled-models` to get them from
-[`wxscan-models`](https://crates.io/crates/wxscan-models), where they are
+The weights are not part of this crate, nor of any other. Take the prebuilt ones
+from [wxscan-weights](https://github.com/wilinz/wxscan-weights), where they are
 grouped by format and follow the backend in use, or pass your own buffers:
 
-```toml
-wxscan = { version = "0.1", features = ["bundled-models"] }
+```rust
+let detect = std::fs::read("detect.tflite")?;
+let sr = std::fs::read("sr.tflite")?;
 ```
 
 Without models the pipeline degrades to a plain decoder rather than failing. It
@@ -50,15 +51,15 @@ knows which library runs it. Two backends ship, both in the `backend` module:
 
 | Feature | Engine | Weights | C dependency |
 |---|---|---|---|
-| `tflite` (default) | [`wxscan-tflite`](https://crates.io/crates/wxscan-tflite) | `models::tflite` | libtensorflowlite_c |
-| `tract` | [tract](https://crates.io/crates/tract-onnx) | `models::onnx` | none |
+| `tflite` (default) | [`wxscan-tflite`](https://crates.io/crates/wxscan-tflite) | `detect.tflite`, `sr.tflite` | libtensorflowlite_c |
+| `tract` | [tract](https://crates.io/crates/tract-onnx) | `detect.onnx`, `sr.onnx` | none |
 
 The tflite adapter is also where layout conversion lives: tflite is NHWC, the
 trait contract is NCHW. tract needs none, ONNX being NCHW like the Caffe models
 both formats are converted from, and it builds anywhere cargo does:
 
 ```toml
-wxscan = { version = "0.1", default-features = false, features = ["tract", "bundled-models"] }
+wxscan = { version = "0.1", default-features = false, features = ["tract"] }
 ```
 
 Turning both off leaves a core with no inference and no C dependency, which
@@ -90,7 +91,6 @@ resolve the symbols, which is what Apple platforms normally do.
 | Feature | Default | Effect |
 |---|---|---|
 | `tflite` | yes | The libtensorflowlite_c implementation of `net::Net`. |
-| `bundled-models` | no | Embeds the weights, exposed as the `models` module. |
 | `profiling` | no | Instrumentation on hot paths, used by `examples/profile`. |
 
 Part of [wxscan-rs](https://github.com/wilinz/wxscan-rs). Apache-2.0.

@@ -17,20 +17,15 @@ crate-type = ["rlib"]
 # tflite is on by default: without the CNN models the pipeline is only a plain decoder
 default = ["tflite"]
 # Pulls in the tflite binding and implements net::Net for it
-tflite = ["dep:wxscan-tflite", "wxscan-models?/tflite"]
+tflite = ["dep:wxscan-tflite"]
 # The pure Rust alternative: tract running the ONNX weights, no C dependency
-tract = ["dep:tract-onnx", "wxscan-models?/onnx"]
+tract = ["dep:tract-onnx"]
 # Instrumentation used by examples/profile
 profiling = ["wxing/profiling"]
-# Embeds the prebuilt weights from wxscan-models, exposed as the `models`
-# module. The format follows the backend: enabling it alongside `tflite` gives
-# `models::tflite`.
-bundled-models = ["dep:wxscan-models"]
 
 [dependencies]
 cvlite = "0.1.0"
 wxing = "0.1.0"
-wxscan-models = { path = "../wxscan-models", version = "0.1.0", optional = true, default-features = false }
 wxscan-tflite = { path = "../wxscan-tflite", version = "0.1.0", optional = true }
 tract-onnx = { version = "0.21", optional = true }
 

@@ -2,7 +2,7 @@
 //! the output of OpenCV's caffe layers.
 //!
 //! The reference tensors are exported by
-//! `tools/model_conversion/ref_dump.py` using the caffe importer of
+//! `tools/ref_dump.py` in the wxscan-weights repository, using the caffe importer of
 //! OpenCV 4.x.
 
 use wxscan::detector::detection_output::{forward, DetectionOutputParams};

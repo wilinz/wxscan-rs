@@ -24,9 +24,10 @@
 //! For CoreML, NNAPI or anything else, set `default-features = false` and
 //! implement [`net::Net`] for your own type; the trait is the whole contract.
 //!
-//! The weights themselves are not part of this crate. Enable the
-//! `bundled-models` feature to get them through [`models`], where they are
-//! grouped by format, or pass your own buffers to the constructor.
+//! The weights themselves are in no crate at all. Pass your own buffers to the
+//! constructor, or take the prebuilt ones from
+//! <https://github.com/wilinz/wxscan-weights>, which also holds the scripts
+//! that convert them from the upstream Caffe models.
 
 pub mod backend;
 pub mod decodermgr;
@@ -42,14 +43,6 @@ pub mod wechat_qrcode;
 /// for its type lives in [`backend`].
 #[cfg(feature = "tflite")]
 pub use wxscan_tflite as tflite;
-
-/// Prebuilt weights, available with the `bundled-models` feature.
-///
-/// Weights are grouped by format, which follows the backend in use: with the
-/// default `tflite` feature they are at `models::tflite::{DETECT, SR}`, and
-/// with `tract` at `models::onnx::{DETECT, SR}`.
-#[cfg(feature = "bundled-models")]
-pub use wxscan_models as models;
 
 pub use wxing::error::{ZXError, ZXResult};
 pub use wechat_qrcode::{QRCodeResult, WeChatQRCode};

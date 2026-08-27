@@ -10,21 +10,21 @@
 #               The tflite binding, the default inference backend. Separate so
 #               that the only C dependency is confined to it. The alternative,
 #               tract, is pure Rust and needs no crate of its own.
-#   wxscan-models
-#               The prebuilt weights, in TFLite and ONNX form, kept separate so
-#               callers that supply their own do not download them.
 #   wxscan-ffi  The C ABI, for callers outside Rust.
 #
 # The two pieces that are *not* WeChat specific live in their own repositories,
 # because they are useful to anyone:
 #   cvlite      github.com/wilinz/cvlite   OpenCV imgproc functions
 #   wxing       github.com/wilinz/wxing    the ZXing fork, QR decoding
+#
+# The weights are not here either, and are in no crate at all: they are data,
+# and a registry is the wrong place to version two megabytes of it.
+#   wxscan-weights  github.com/wilinz/wxscan-weights
 [workspace]
 resolver = "2"
 members = [
     "crates/wxscan",
     "crates/wxscan-tflite",
-    "crates/wxscan-models",
     "crates/wxscan-ffi",
 ]
 

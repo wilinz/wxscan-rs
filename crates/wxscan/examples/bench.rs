@@ -4,8 +4,8 @@
 //! Usage: cargo run --release --features tflite --example bench --
 //! <detect.tflite> <sr.tflite> <image>
 //!
-//! Built with `--features tflite,tract,bundled-models` it also runs the same
-//! frames through tract on the bundled ONNX weights, which is the head to head
+//! Built with `--features tflite,tract` it also runs the same
+//! frames through tract on the same weights in ONNX form, which is the head to head
 //! between the two backends.
 
 use std::time::Instant;
@@ -16,7 +16,7 @@ use wxscan::WeChatQRCode;
 
 enum Backend {
     Tflite(TfliteNet),
-    #[cfg(all(feature = "tract", feature = "bundled-models"))]
+    #[cfg(feature = "tract")]
     Tract(wxscan::backend::tract::TractNet),
     // Constructed only in the no-model configuration below.
     #[allow(dead_code)]
@@ -27,30 +27,42 @@ impl Net for Backend {
     fn forward(&self, input: &[f32], shape: &[usize]) -> Result<Vec<NetOutput>, String> {
         match self {
             Backend::Tflite(n) => n.forward(input, shape),
-            #[cfg(all(feature = "tract", feature = "bundled-models"))]
+            #[cfg(feature = "tract")]
             Backend::Tract(n) => n.forward(input, shape),
             Backend::None(n) => n.forward(input, shape),
         }
     }
 }
 
-/// The same measurements through tract, for comparison. Off unless the feature
-/// and the bundled ONNX weights are both there.
-#[cfg(all(feature = "tract", feature = "bundled-models"))]
+/// The same measurements through tract, for comparison. Needs the ONNX weights,
+/// which live in the wxscan-weights repository rather than in a crate; point
+/// `WXSCAN_WEIGHTS_DIR` at them or check that repository out beside this one.
+#[cfg(feature = "tract")]
 fn bench_tract(gray: &[u8], w: usize, h: usize) {
     use wxscan::backend::tract::TractNet;
-    use wxscan::models::onnx;
 
-    let load = |bytes| Backend::Tract(TractNet::from_bytes(bytes).expect("load onnx"));
-    let nn_only = WeChatQRCode::new(Some(load(onnx::DETECT)), None);
+    let dir = std::env::var_os("WXSCAN_WEIGHTS_DIR")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| {
+            std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../../wxscan-weights/models")
+        });
+    let read = |name: &str| std::fs::read(dir.join(name));
+    let (Ok(detect_bytes), Ok(sr_bytes)) = (read("detect.onnx"), read("sr.onnx")) else {
+        println!("tract: skipped, no ONNX weights in {}", dir.display());
+        return;
+    };
+
+    let load = |bytes: &[u8]| Backend::Tract(TractNet::from_bytes(bytes).expect("load onnx"));
+    let nn_only = WeChatQRCode::new(Some(load(&detect_bytes)), None);
     bench("tract detect only", &nn_only, gray, w, h);
-    let nn = WeChatQRCode::new(Some(load(onnx::DETECT)), Some(load(onnx::SR)));
+    let nn = WeChatQRCode::new(Some(load(&detect_bytes)), Some(load(&sr_bytes)));
     bench("tract detect + sr", &nn, gray, w, h);
 
     // The forward pass on its own, at the size the detector uses, which is the
     // only part the backend actually decides. Everything else is shared.
     use cvlite::{blob::blob_from_gray, resize, Interpolation};
-    let detect = TractNet::from_bytes(onnx::DETECT).unwrap();
+    let detect = TractNet::from_bytes(&detect_bytes).unwrap();
     let (tw, th) = ((w as f32 * 0.2777) as usize, (h as f32 * 0.2777) as usize);
     let small = resize(gray, w, h, tw, th, Interpolation::Cubic);
     let blob = blob_from_gray(&small, 1.0 / 255.0);
@@ -62,7 +74,7 @@ fn bench_tract(gray: &[u8], w: usize, h: usize) {
     println!("{:22} {:7.1} ms/call   ({tw}x{th})", "tract SSD forward", start.elapsed().as_secs_f64() * 100.0);
 }
 
-#[cfg(not(all(feature = "tract", feature = "bundled-models")))]
+#[cfg(not(feature = "tract"))]
 fn bench_tract(_gray: &[u8], _w: usize, _h: usize) {}
 
 fn bench(name: &str, scanner: &WeChatQRCode<Backend>, gray: &[u8], w: usize, h: usize) {

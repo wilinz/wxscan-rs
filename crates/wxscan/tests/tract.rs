@@ -5,21 +5,28 @@
 //! images, the two having been compared side by side; the point of the test is
 //! that swapping the engine does not change the answer.
 //!
-//! Run with `cargo test -p wxscan --no-default-features --features
-//! tract,bundled-models --test tract`.
-#![cfg(all(feature = "tract", feature = "bundled-models"))]
+//! The ONNX weights are not part of any crate; they come from the
+//! wxscan-weights repository checked out beside this one, or from
+//! `WXSCAN_WEIGHTS_DIR`. Without them the test skips.
+//!
+//! Run with `cargo test -p wxscan --no-default-features --features tract
+//! --test tract`.
+#![cfg(feature = "tract")]
+
+mod common;
 
 use wxscan::backend::tract::TractNet;
-use wxscan::models::onnx;
 use wxscan::WeChatQRCode;
 
 const URL: &str = "https://github.com/opencv/opencv_contrib";
 
-fn scanner() -> WeChatQRCode<TractNet> {
-    WeChatQRCode::new(
-        Some(TractNet::from_bytes(onnx::DETECT).expect("load detect.onnx")),
-        Some(TractNet::from_bytes(onnx::SR).expect("load sr.onnx")),
-    )
+fn scanner() -> Option<WeChatQRCode<TractNet>> {
+    let detect = common::load("detect.onnx")?;
+    let sr = common::load("sr.onnx")?;
+    Some(WeChatQRCode::new(
+        Some(TractNet::from_bytes(&detect).expect("load detect.onnx")),
+        Some(TractNet::from_bytes(&sr).expect("load sr.onnx")),
+    ))
 }
 
 fn decode(scanner: &WeChatQRCode<TractNet>, file: &str) -> Vec<String> {
@@ -35,7 +42,9 @@ fn decode(scanner: &WeChatQRCode<TractNet>, file: &str) -> Vec<String> {
 
 #[test]
 fn decodes_the_sample_images() {
-    let s = scanner();
+    let Some(s) = scanner() else {
+        return common::skip("decodes_the_sample_images");
+    };
     for (file, want) in [
         ("hello.png", "HELLO WORLD"),
         ("url.png", URL),
@@ -55,7 +64,9 @@ fn decodes_the_sample_images() {
 /// keep working.
 #[test]
 fn one_scanner_handles_many_input_sizes() {
-    let s = scanner();
+    let Some(s) = scanner() else {
+        return common::skip("one_scanner_handles_many_input_sizes");
+    };
     for file in ["hello.png", "small.png", "long.png", "url.png", "hello.png"] {
         assert!(!decode(&s, file).is_empty(), "{file}: no result");
     }
