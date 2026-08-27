@@ -33,19 +33,29 @@ host-net = []
 # is why it can be turned off; the wasm build does, having no filesystem, no
 # need — a browser decodes pictures itself — and every kilobyte to answer for.
 #
-# The formats are the ones a photo picker actually writes: iOS `image_picker`
-# emits jpg, png or gif and nothing else. Adding bmp, webp and tiff costs 570 KB
-# and buys the three formats nobody photographs anything in, so what is missing
-# is HEIC, which cannot be bought at any sensible price — it wants an HEVC
-# decoder. `wxscan_set_image_decoder` is the answer to that one: the platform
-# already has a decoder for everything it can display, and can lend it.
+# The three are the ones a photo picker writes: iOS `image_picker` emits jpg,
+# png or gif and nothing else. HEIC, which is most of a photo library, cannot be
+# had here at any sensible price — it wants an HEVC decoder —
+# `wxscan_set_image_decoder` is the answer to that one, and the platform lends
+# what it already has.
 image-io = ["dep:image"]
+
 
 [dependencies]
 cvlite = "0.1.0"
 wxscan = { path = "../wxscan", version = "0.1.0", default-features = false }
 encoding_rs = "0.8"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif"], optional = true }
+
+# webp, bmp and tiff, everywhere except Apple. Nobody photographs anything in
+# these, but they arrive from elsewhere: webp off the web, bmp out of a Windows
+# screenshot. They cost 570 KB, which is worth paying where there is no
+# alternative and wasteful where there is — ImageIO reads all three already, and
+# a browser decodes pictures itself and never compiles this crate's image-io at
+# all. Written as a target dependency rather than a feature so that no caller
+# has to remember which platform needs it.
+[target.'cfg(not(any(target_os = "ios", target_os = "macos")))'.dependencies]
+image = { version = "0.25", default-features = false, features = ["webp", "bmp", "tiff"], optional = true }
 
 [build-dependencies]
 cbindgen = "0.27"
