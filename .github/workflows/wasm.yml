@@ -120,6 +120,18 @@ jobs:
           compiler and the flags it was built with."
           upload wasm-latest
 
+          # The assets move on every push; the tag does not, unless it is told
+          # to. Left alone it keeps naming whichever commit first created the
+          # release — months out of date while the notes claim it moves, and it
+          # holds a rewritten commit alive if main was ever force-pushed.
+          #
+          # Only from a branch: a tag build publishes its own release, and this
+          # one follows main. `wasm-latest` matches no trigger above, so moving
+          # it starts nothing.
+          if [ "$GITHUB_REF_TYPE" = branch ]; then
+            git push -f origin "$GITHUB_SHA:refs/tags/wasm-latest"
+          fi
+
           if [ "$GITHUB_REF_TYPE" = tag ]; then
             # --latest, because wasm-latest is a prerelease and would otherwise
             # leave the repository with no release marked as the current one.
