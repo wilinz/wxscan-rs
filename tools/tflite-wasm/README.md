@@ -11,10 +11,10 @@ nothing made them agree. It has to match the desktop build pinned in wxscan's
 `tool/tflite.lock`, so that a browser runs the same runtime, and the same
 `.tflite` weights, as every other platform.
 
-Changing that file is the whole of a version bump. Tagging `tflite-<version>`
-builds it and publishes it as the release for that tag; a tag naming a
-different version fails rather than publishing bytes under a name that does not
-describe them.
+Changing that file is the whole of a version bump. It is built and published by
+the `publish` workflow when this library is tagged — the tag is this library's
+version, not TensorFlow's, and its release carries everything a browser needs
+at that version so that a consumer pins one tag rather than several.
 
 ```sh
 source /path/to/emsdk/emsdk_env.sh
