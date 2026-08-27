@@ -131,6 +131,10 @@ jobs:
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
+          # gh works out the repository from a git remote, and this step runs
+          # in the output directory rather than in the checkout. Naming it is
+          # cheaper than caring where the shell happens to be.
+          GH_REPO: ${{ github.repository }}
         run: |
           cd "$GITHUB_WORKSPACE/out"
           if [ "$GITHUB_REF_TYPE" = tag ]; then
