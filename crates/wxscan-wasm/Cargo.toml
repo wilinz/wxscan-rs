@@ -29,6 +29,11 @@ tract = ["wxscan-ffi/tract"]
 debug-log = []
 [dependencies]
 wxscan-ffi = { path = "../wxscan-ffi", version = "0.1.0", default-features = false }
+wxscan = { path = "../wxscan", version = "0.1.0", default-features = false }
+# The `text` field of the JSON document, for GB2312 payloads.
+encoding_rs = "0.8"
+# Colour conversion for scan_pixels.
+cvlite = "0.1.0"
 # tract pulls getrandom in transitively, which refuses to build for
 # wasm32-unknown-unknown unless it is told where randomness comes from.
 getrandom = { version = "0.2", features = ["custom"] }

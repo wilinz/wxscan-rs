@@ -1534,7 +1534,10 @@ version = "0.1.0"
 name = "wxscan-wasm"
 version = "0.1.0"
 dependencies = [
+ "cvlite",
+ "encoding_rs",
  "getrandom 0.2.17",
+ "wxscan",
  "wxscan-ffi",
 ]
 
