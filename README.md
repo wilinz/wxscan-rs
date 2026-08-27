@@ -1,0 +1,137 @@
+# wxscan-rs
+
+A Rust port of the `wechat_qrcode` algorithm from OpenCV contrib: CNN-based
+detection, super resolution, and decoding. No OpenCV dependency.
+
+The port follows the [upstream C++ sources][upstream] closely. Output is
+compared against the original implementation on a fixed corpus, see
+[Parity](#parity).
+
+[upstream]: https://github.com/opencv/opencv_contrib/tree/4.x/modules/wechat_qrcode
+
+## Crates
+
+The split follows one boundary: whether a piece is specific to this algorithm.
+The two pieces that are not live in their own repositories, because they are
+useful without any of this:
+
+| Crate | Repository | Contents |
+|---|---|---|
+| [`cvlite`](https://github.com/wilinz/cvlite) | own | The OpenCV `imgproc` functions used here: resize, adaptive threshold, colour conversion, blob. Not specific to QR codes; NEON paths on aarch64. |
+| [`wxing`](https://github.com/wilinz/wxing) | own | The ZXing fork used by WeChat: binarizers, finder patterns, decoder. Independent of the CNN stages, so it decodes on its own. |
+
+Everything below is specific to the WeChat algorithm, and the four move as one
+version: the weights belong to the detector, the tflite binding is the backend
+it runs them on, and the C ABI is its surface.
+
+| Crate | Contents |
+|---|---|
+| [`wxscan`](crates/wxscan) | CNN detection, super resolution, and the orchestration around them. This is the complete algorithm. |
+| [`wxscan-tflite`](crates/wxscan-tflite) | The tflite binding, used as the default inference backend. Separate so the only C dependency is confined to it. |
+| [`wxscan-models`](crates/wxscan-models) | The prebuilt weights, in TFLite and ONNX form, kept separate so callers supplying their own do not download them. |
+| [`wxscan-ffi`](crates/wxscan-ffi) | The C ABI, for callers outside Rust. Generates `include/wxscan.h` with cbindgen. |
+
+## Usage
+
+```rust
+use wxscan::WeChatQRCode;
+
+// Both models may be None, which decodes without the CNN stages.
+let detect = wxscan::tflite::TfliteNet::from_bytes(detect_bytes)?;
+let sr = wxscan::tflite::TfliteNet::from_bytes(sr_bytes)?;
+let scanner = WeChatQRCode::new(Some(detect), Some(sr));
+
+for result in scanner.detect_and_decode_gray(&gray, width, height) {
+    // The payload is raw bytes; `charset` says how to interpret it.
+    println!("{} ({})", result.text_lossy(), result.charset);
+}
+```
+
+With the `bundled-models` feature the weights come from `wxscan-models`:
+
+```rust
+let detect = wxscan::tflite::TfliteNet::from_bytes(wxscan::models::tflite::DETECT)?;
+```
+
+## Inference backends
+
+CNN inference sits behind the `net::Net` trait, and no part of the algorithm
+knows which library runs it. Two backends ship, both in `wxscan::backend`:
+
+| Feature | Engine | Weights | C dependency |
+|---|---|---|---|
+| `tflite` (default) | `wxscan-tflite` | `models::tflite` | libtensorflowlite_c |
+| `tract` | [tract](https://crates.io/crates/tract-onnx) | `models::onnx` | none |
+
+The tflite adapter is also where layout conversion lives, since tflite is NHWC
+while the trait contract is NCHW. tract needs none: ONNX is NCHW, like the Caffe
+models both formats are converted from.
+
+```toml
+wxscan = { version = "0.1", default-features = false, features = ["tract", "bundled-models"] }
+```
+
+tract builds and runs anywhere cargo does, at some cost in speed against
+tflite's XNNPACK kernels. Turning both features off leaves a core with no
+inference at all, which still compiles and tests with plain `cargo build`.
+
+A backend means implementing one method. The trait lives in `wxscan`, so an
+out-of-tree crate can implement it for its own type:
+
+```rust
+use wxscan::net::{Net, NetOutput};
+
+struct MyNet(/* a CoreML, NNAPI or any other engine */);
+
+impl Net for MyNet {
+    fn forward(&self, input: &[f32], shape: &[usize]) -> Result<Vec<NetOutput>, String> {
+        // input is NCHW; return NCHW
+    }
+}
+```
+
+Without models the pipeline degrades to a plain decoder rather than failing. It
+still reads ordinary codes; what it loses is the detection rate on small or
+distant ones, which is what the CNN stages contribute.
+
+## The TFLite library
+
+This repository vendors no binaries. Point `TFLITE_LIB_DIR` at a directory
+containing libtensorflowlite_c, or let the final link step resolve the symbols,
+which is what Apple platforms normally do. The library name differs by
+distribution: desktop builds of the C API are `libtensorflowlite_c`, while
+Google's LiteRT distribution for Android names the same API `libLiteRt`.
+
+```sh
+TFLITE_LIB_DIR=/path/to/libs cargo test --workspace
+```
+
+## Parity
+
+`tools/parity` runs the same images through OpenCV's `wechat_qrcode` and through
+this port and compares the decoded text and the corner coordinates. Current
+results are in [`tools/parity/README.md`](tools/parity/README.md): text matches
+on 159/160 images without models and 24/24 scene images with them, and corner
+coordinates are bit-identical on all but two, which differ at sub-pixel level.
+
+The remaining differences trace to `cv::adaptiveThreshold`, where OpenCV uses a
+fixed-point separable filter for 8U images while this port accumulates in f32.
+
+`tools/model_conversion` rebuilds the TFLite models from the published Caffe
+weights.
+
+## Performance
+
+[`docs/performance.md`](docs/performance.md) records what was optimized, how it
+was measured, and what was tried and reverted. Every change there was verified
+to leave the output byte-identical on the parity corpus.
+
+## Bindings
+
+The C ABI is consumed by the Flutter packages in
+[`wxscan`](https://github.com/wilinz/wxscan), which is the reference for how to
+drive it from a platform binding.
+
+## Licence
+
+Apache-2.0, as is the upstream implementation this is ported from.

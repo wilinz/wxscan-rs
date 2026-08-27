@@ -1,0 +1,17 @@
+[package]
+name = "wxscan-tflite"
+description = "Minimal FFI binding to libtensorflowlite_c (the LiteRT C API), used as the default inference backend of wxscan"
+keywords = ["tflite", "litert", "tensorflow", "inference", "ffi"]
+categories = ["external-ffi-bindings", "science"]
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+readme = "README.md"
+build = "build.rs"
+
+[lib]
+crate-type = ["rlib"]
+
+[dependencies]

@@ -1,0 +1,4 @@
+# Reference environment: OpenCV 5.x dropped the Caffe importer, so reference
+# output must be produced with 4.x
+opencv-contrib-python==4.10.0.84
+numpy

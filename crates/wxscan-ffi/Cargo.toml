@@ -1,0 +1,35 @@
+[package]
+name = "wxscan-ffi"
+description = "C ABI for wxscan, for callers in C, C++, Swift, Kotlin, Python and others"
+keywords = ["qrcode", "wechat", "ffi", "c-api", "scanner"]
+categories = ["computer-vision", "external-ffi-bindings"]
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+readme = "README.md"
+build = "build.rs"
+
+[lib]
+name = "wxscan_ffi"
+# No cdylib: producing one links the TFLite symbols at build time, while this
+# library expects the host build system to supply that library at the final
+# link. A caller that wants a shared object wraps this crate in one of its own
+# and provides the search path there.
+crate-type = ["staticlib", "rlib"]
+
+[features]
+default = ["tflite"]
+# The inference backends. Both may be on at once, in which case a model buffer
+# is tried as TFLite and then as ONNX, so one binary takes either format.
+tflite = ["wxscan/tflite"]
+tract = ["wxscan/tract"]
+
+[dependencies]
+cvlite = "0.1.0"
+wxscan = { path = "../wxscan", version = "0.1.0", default-features = false }
+encoding_rs = "0.8"
+
+[build-dependencies]
+cbindgen = "0.27"
