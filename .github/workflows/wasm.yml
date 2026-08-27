@@ -68,32 +68,52 @@ jobs:
           } > $out/wxscan_wasm.build
           cat $out/wxscan_wasm.build
 
+      # For looking at a run that went wrong. Artifacts expire; this is not
+      # where anyone should be fetching the module from, and the release below
+      # is. Kept short for the same reason.
       - uses: actions/upload-artifact@v4
         with:
           name: wxscan_wasm
+          retention-days: 14
           path: |
             wxscan-rs/target/wasm32-unknown-unknown/wasm/wxscan_wasm.wasm
             wxscan-rs/target/wasm32-unknown-unknown/wasm/wxscan_wasm.build
 
-      # A stable place to fetch the current module from. `latest` is a moving
-      # tag on purpose: it is what main built, which is what the live demo
-      # serves, so the two cannot disagree. A version tag additionally gets a
-      # release of its own, which does not move.
+      # Releases are where the module is fetched from, because release assets
+      # do not expire and workflow artifacts do.
+      #
+      # Two of them, answering two different questions. `wasm-latest` moves: it
+      # is whatever main built, which is what the live demo serves, so the two
+      # cannot disagree — right for someone tracking development, wrong for
+      # anyone who wants the same bytes tomorrow. A version tag gets a release
+      # of its own that never moves, which is the one to depend on.
       - name: Publish
         working-directory: wxscan-rs
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           out=target/wasm32-unknown-unknown/wasm
-          publish() {
-            gh release view "$1" >/dev/null 2>&1 \
-              || gh release create "$1" --title "$2" --notes "$3" ${4:-}
+          upload() {
             gh release upload "$1" \
               "$out/wxscan_wasm.wasm" "$out/wxscan_wasm.build" --clobber
           }
-          publish wasm-latest "wasm (latest main)" \
-            "The scanner as WebAssembly, rebuilt on every push to main. See wxscan_wasm.build for the commit it came from." \
-            --prerelease
+
+          gh release view wasm-latest >/dev/null 2>&1 || gh release create wasm-latest \
+            --prerelease \
+            --title "wasm (latest main)" \
+            --notes "The scanner as WebAssembly, rebuilt on every push to main.
+
+          This tag moves. For bytes that stay put, take a version release.
+          \`wxscan_wasm.build\` beside the module names the commit, the
+          compiler and the flags it was built with."
+          upload wasm-latest
+
           if [ "$GITHUB_REF_TYPE" = tag ]; then
-            publish "$GITHUB_REF_NAME" "$GITHUB_REF_NAME" "Release $GITHUB_REF_NAME"
+            # --latest, because wasm-latest is a prerelease and would otherwise
+            # leave the repository with no release marked as the current one.
+            gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" \
+              --latest \
+              --title "$GITHUB_REF_NAME" \
+              --generate-notes
+            upload "$GITHUB_REF_NAME"
           fi
