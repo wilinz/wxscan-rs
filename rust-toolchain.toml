@@ -1,0 +1,10 @@
+# Pinned so every machine and CI runner builds with the same compiler.
+#
+# The Dart side pins the same version for the shim it compiles
+# (`packages/wxscan/rust/rust-toolchain.toml` in the wxscan repository). This
+# one covers the crates themselves, and the browser build above all: the
+# WebAssembly the live demo serves is built here, and "the same sources" is
+# only half a guarantee without "the same compiler".
+[toolchain]
+channel = "1.95.0"
+targets = ["wasm32-unknown-unknown"]
