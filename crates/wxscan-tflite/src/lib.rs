@@ -107,6 +107,16 @@ impl Model {
         Self::from_bytes_opts(model_bytes, true)
     }
 
+    /// Whether the bytes are a model this build can read, and nothing further.
+    pub fn parses(model_bytes: &[u8]) -> Result<(), String> {
+        let model = unsafe { TfLiteModelCreate(model_bytes.as_ptr() as _, model_bytes.len()) };
+        if model.is_null() {
+            return Err("TfLiteModelCreate failed".into());
+        }
+        unsafe { TfLiteModelDelete(model) };
+        Ok(())
+    }
+
     /// `use_xnn`=false skips the XNNPACK delegate. Models whose input is
     /// resized dynamically (the PNet pyramid) must disable it: XNNPACK builds a
     /// static graph, and a resize afterwards fails with `failed to reshape
@@ -282,8 +292,15 @@ pub struct Tensor {
 
 impl TfliteNet {
     pub fn from_bytes(model_bytes: &[u8]) -> Result<Self, String> {
-        // Build once to confirm the model parses
-        let _probe = Model::from_bytes_opts(model_bytes, false)?;
+        // Only that the weights parse. This used to build a whole interpreter
+        // and allocate its tensors, which is more than the check needs and
+        // more than these models can answer: both take a dynamic input shape —
+        // the detector scales with the image, super resolution with the crop —
+        // so there is no meaningful shape to allocate for until [`forward`]
+        // resizes to a real one. Some TFLite builds tolerate allocating at the
+        // unset shape and some refuse it, and where they refuse it every model
+        // was rejected here and the scanner fell back to having none, silently.
+        Model::parses(model_bytes)?;
         Ok(Self {
             bytes: model_bytes.to_vec(),
             state: std::sync::Mutex::new(None),
