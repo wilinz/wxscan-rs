@@ -1,0 +1,98 @@
+# Builds the TensorFlow Lite runtime for browsers and publishes it, so that
+# nothing downstream has to commit a binary or own an emsdk.
+#
+# Kept apart from the `wasm` workflow because it is a different kind of thing.
+# That one runs on every push and takes seconds; this clones TensorFlow, fetches
+# a dozen dependencies and compiles about a thousand XNNPACK microkernels. It
+# only ever has to run when the pinned TensorFlow version moves, which is why
+# it is asked for rather than triggered — and why its release is named after
+# that version rather than after a commit.
+name: tflite-wasm
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: TensorFlow version to build, e.g. v2.17.1
+        required: true
+        default: v2.17.1
+  push:
+    paths: ['tools/tflite-wasm/**']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tflite-wasm
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      # The version comes from the input when asked for, and otherwise from the
+      # default build.sh carries — which is the one wxscan pins everywhere else.
+      - name: Settle the version
+        id: v
+        run: |
+          v='${{ inputs.version }}'
+          [ -n "$v" ] || v=$(sed -n 's/^TENSORFLOW_VERSION="${TENSORFLOW_VERSION:-\(.*\)}"$/\1/p' \
+            tools/tflite-wasm/build.sh)
+          [ -n "$v" ] || { echo "could not settle a version" >&2; exit 1; }
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "building TensorFlow $v"
+
+      - uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: latest
+          actions-cache-folder: emsdk-cache
+
+      # The tree TensorFlow and its dependencies are fetched into. Restoring it
+      # turns a rebuild from three quarters of an hour into a few minutes; a
+      # miss simply builds from nothing, which is what the first run does.
+      - uses: actions/cache@v4
+        with:
+          path: tools/tflite-wasm/.work
+          key: tflite-wasm-${{ steps.v.outputs.version }}-${{ hashFiles('tools/tflite-wasm/build.sh', 'tools/tflite-wasm/patches/*') }}
+          restore-keys: tflite-wasm-${{ steps.v.outputs.version }}-
+
+      - name: Build
+        env:
+          TENSORFLOW_VERSION: ${{ steps.v.outputs.version }}
+        run: tools/tflite-wasm/build.sh "$GITHUB_WORKSPACE/out"
+
+      - name: Describe it
+        run: |
+          {
+            echo "repository=wilinz/wxscan-rs"
+            echo "commit=$GITHUB_SHA"
+            echo "tensorflow=${{ steps.v.outputs.version }}"
+            echo "emscripten=$(emcc --version | head -1)"
+            echo "built=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "sha256_js=$(sha256sum out/wxscan_tflite.js | cut -d' ' -f1)"
+            echo "sha256_wasm=$(sha256sum out/wxscan_tflite.wasm | cut -d' ' -f1)"
+          } > out/wxscan_tflite.build
+          cat out/wxscan_tflite.build
+          ls -l out
+
+      # Named after the TensorFlow version, because that is what identifies it:
+      # rebuilding the same version should land in the same place, and a
+      # different version is a different artifact rather than a newer one.
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: tflite-${{ steps.v.outputs.version }}
+        run: |
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" \
+            --prerelease \
+            --title "TensorFlow Lite for the browser, $TAG" \
+            --notes "The TFLite C runtime with the XNNPACK delegate, compiled to WebAssembly by tools/tflite-wasm.
+
+          This is the runtime a browser uses. It has to match what the package pins for every other platform; wxscan's tool/check_tflite_web.sh is what says so.
+
+          \`wxscan_tflite.build\` names the TensorFlow version, the emscripten that built it, and the checksums."
+          gh release upload "$TAG" \
+            out/wxscan_tflite.js out/wxscan_tflite.wasm out/wxscan_tflite.build --clobber
