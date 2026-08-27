@@ -1,0 +1,131 @@
+# Builds the scanner as WebAssembly and publishes it, so that using wxscan in a
+# browser does not require a Rust toolchain.
+#
+# The Dart package deliberately does not commit this file: a compiled artifact
+# sitting beside the sources it came from goes out of step with them, and this
+# one did — the live demo served a detector bug for a while after Rust had been
+# fixed, because rebuilding it was a step someone had to remember. Building it
+# here is what keeps anyone else from having to, and a push to this repository
+# is exactly when it has to change.
+#
+# The TensorFlow Lite runtime is not built here and is not in these releases.
+# It is a dependency rather than this repository's code, it takes ten minutes
+# rather than seconds, and it changes on its own rhythm; tflite-wasm.yml gives
+# it its own tag and its own release, so that every version of the scanner does
+# not drag another copy of it along. A consumer pins the two separately —
+# wxscan's tool/web.lock has a line for each.
+name: wasm
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# A newer push wins; there is no point publishing a module that is already
+# behind by the time it lands.
+concurrency:
+  group: wasm
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: wxscan-rs }
+
+      # cvlite and wxing are not on crates.io yet, so they are checked out
+      # beside this one and patched in exactly as wxscan-dev/link.sh does on a
+      # developer's machine. The toolchain comes from rust-toolchain.toml, so
+      # the compiler is theirs too: what is published is what they would have
+      # built.
+      - uses: actions/checkout@v4
+        with: { repository: wilinz/cvlite, path: cvlite }
+      - uses: actions/checkout@v4
+        with: { repository: wilinz/wxing, path: wxing }
+
+      - name: Build
+        working-directory: wxscan-rs
+        run: |
+          mkdir -p .cargo
+          printf '[patch.crates-io]\ncvlite = { path = "../cvlite" }\nwxing = { path = "../wxing" }\n' \
+            > .cargo/config.toml
+          rustup target add wasm32-unknown-unknown
+          # Costs nothing in correctness and takes about 28% off scanning time.
+          RUSTFLAGS="-C target-feature=+simd128" \
+            cargo build -p wxscan-wasm --target wasm32-unknown-unknown --profile wasm
+
+      # What it is, so that a module found on a disk months from now can be
+      # traced back to the source that produced it.
+      - name: Describe it
+        working-directory: wxscan-rs
+        run: |
+          out=target/wasm32-unknown-unknown/wasm
+          {
+            echo "repository=wilinz/wxscan-rs"
+            echo "commit=$GITHUB_SHA"
+            echo "ref=$GITHUB_REF_NAME"
+            echo "rustc=$(rustc --version)"
+            echo "rustflags=-C target-feature=+simd128"
+            echo "profile=wasm"
+            echo "built=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "sha256=$(sha256sum $out/wxscan_wasm.wasm | cut -d' ' -f1)"
+          } > $out/wxscan_wasm.build
+          cat $out/wxscan_wasm.build
+
+      # For looking at a run that went wrong. Artifacts expire and release
+      # assets do not, so this is not where anyone should be fetching from.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wxscan_wasm
+          retention-days: 14
+          path: |
+            wxscan-rs/target/wasm32-unknown-unknown/wasm/wxscan_wasm.wasm
+            wxscan-rs/target/wasm32-unknown-unknown/wasm/wxscan_wasm.build
+
+      # Two releases, answering two different questions. `wasm-latest` moves:
+      # it is whatever main built, which is what the live demo serves, so the
+      # two cannot disagree — right for someone tracking development, wrong for
+      # anyone who wants the same bytes tomorrow. A version tag gets a release
+      # of its own that never moves, and that is the one a lock file names.
+      - name: Publish
+        working-directory: wxscan-rs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # gh works out the repository from a git remote, and the checkout is
+          # in a subdirectory. Naming it is cheaper than caring where the shell
+          # happens to be.
+          GH_REPO: ${{ github.repository }}
+        run: |
+          out=target/wasm32-unknown-unknown/wasm
+          upload() {
+            gh release upload "$1" \
+              "$out/wxscan_wasm.wasm" "$out/wxscan_wasm.build" --clobber
+          }
+
+          gh release view wasm-latest >/dev/null 2>&1 || gh release create wasm-latest \
+            --prerelease \
+            --title "wasm (latest main)" \
+            --notes "The scanner as WebAssembly, rebuilt on every push to main.
+
+          This tag moves. For bytes that stay put, take a version release. The
+          TensorFlow Lite runtime a browser also needs is published separately,
+          under its own \`tflite-\` tag.
+
+          \`wxscan_wasm.build\` beside the module names the commit, the
+          compiler and the flags it was built with."
+          upload wasm-latest
+
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            # --latest, because wasm-latest is a prerelease and would otherwise
+            # leave the repository with no release marked as the current one.
+            gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" \
+              --latest \
+              --title "$GITHUB_REF_NAME" \
+              --generate-notes
+            upload "$GITHUB_REF_NAME"
+          fi

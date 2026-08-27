@@ -9,14 +9,24 @@ The version lives in [`depversion.toml`](../../depversion.toml) at the top of
 the repository, which both `build.sh` and the CI workflow read — one place,
 because it used to be two and nothing made them agree, and at the root because
 it is a fact about the library rather than about this build. It has to match
-the desktop build pinned in wxscan's
-`tool/tflite.lock`, so that a browser runs the same runtime, and the same
-`.tflite` weights, as every other platform.
+the desktop build pinned in wxscan's `tool/tflite.lock`, so that a browser runs
+the same runtime, and the same `.tflite` weights, as every other platform.
 
-Changing that file is the whole of a version bump. It is built and published by
-the `publish` workflow when this library is tagged — the tag is this library's
-version, not TensorFlow's, and its release carries everything a browser needs
-at that version so that a consumer pins one tag rather than several.
+Beside it is `patch`, which is ours rather than TensorFlow's: the revision of
+the patches below and of the script that applies them. Upstream does not build
+this configuration, so what comes out of a given version is decided as much by
+those as by the version, and they change while it stays put. Raise it when they
+do.
+
+Changing either is the whole of a version bump. Tagging `tflite-<version>-p<patch>`
+builds it and publishes it as that tag's release; a tag naming anything else
+fails rather than putting bytes under a name that does not describe them.
+
+This gets a release of its own rather than riding along in the scanner's,
+because it is a dependency on its own rhythm — it changes a few times a year
+where the scanner changes daily, and a copy inside every `v*` release would be
+1.3 MB of the same bytes over and over. Downstream pins the two separately;
+wxscan's `tool/web.lock` has a line for each.
 
 ```sh
 source /path/to/emsdk/emsdk_env.sh

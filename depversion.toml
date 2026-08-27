@@ -6,11 +6,23 @@
 # the two agree. Everything that needs one reads it here.
 #
 # version.txt beside this file is the other half of the pair — that is this
-# library's own version, the one a tag carries.
+# library's own version, the one a `v*` tag carries.
 
-# Has to match DESKTOP_VERSION in the wxscan package's tool/tflite.lock, or a
-# browser runs a different runtime from every other platform; that package's
-# tool/check_tflite_web.sh is what says so. Changing it here is the whole of a
-# version bump: the next release builds and publishes the new runtime.
+# The TensorFlow release the browser runtime is built from. It has to match
+# DESKTOP_VERSION in the wxscan package's tool/tflite.lock, or a browser runs a
+# different runtime from every other platform; that package's
+# tool/check_tflite_web.sh is what says so.
+#
+# `patch` is ours, not TensorFlow's: the revision of the patches under
+# tools/tflite-wasm/patches and of the build script that applies them. Upstream
+# does not build this configuration, so what comes out of a given TensorFlow
+# version is decided as much by those as by the version — and they change while
+# it stays put. Raise it whenever they do, or two different runtimes end up
+# sharing one name.
+#
+# Together they name a release: tflite-v2.17.1-p1. Changing either here is the
+# whole of a version bump; the tflite-wasm workflow refuses a tag that does not
+# match, and builds nothing until one does.
 [tensorflow]
 version = "v2.17.1"
+patch = 1
