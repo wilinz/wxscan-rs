@@ -20,7 +20,7 @@ name = "wxscan_ffi"
 crate-type = ["staticlib", "rlib"]
 
 [features]
-default = ["tflite"]
+default = ["tflite", "image-io"]
 # The inference backends. Both may be on at once, in which case a model buffer
 # is tried as TFLite and then as ONNX, so one binary takes either format.
 tflite = ["wxscan/tflite"]
@@ -28,11 +28,19 @@ tract = ["wxscan/tract"]
 # Inference by the host rather than by this library, for the wasm build: see
 # the `host_net` module. Costs nothing in size, since it compiles no engine.
 host-net = []
+# Reading an image file from a path, for `wxscan_scan_path`. Costs 436 KB of
+# decoders, measured on the arm64 macOS shared library, which is why it can be
+# turned off; the wasm build does, having no filesystem and counting every
+# kilobyte. The formats are the ones a photo picker actually writes — iOS
+# `image_picker` emits jpg, png or gif and nothing else — so bmp, webp and tiff
+# are left out, which alone saves 570 KB.
+image-io = ["dep:image"]
 
 [dependencies]
 cvlite = "0.1.0"
 wxscan = { path = "../wxscan", version = "0.1.0", default-features = false }
 encoding_rs = "0.8"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif"], optional = true }
 
 [build-dependencies]
 cbindgen = "0.27"

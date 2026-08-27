@@ -4,6 +4,11 @@
 //! `wxscan_scan_frame` additionally takes a row stride and a rotation and
 //! prepares the frame first, which is what camera pipelines need.
 
+#[cfg(feature = "image-io")]
+use std::ffi::c_char;
+#[cfg(feature = "image-io")]
+use image::ImageDecoder;
+
 use wxscan::frame::upright_gray;
 use crate::results::{into_c, WxScanResults};
 use crate::scanner::WxScanScanner;
@@ -126,28 +131,9 @@ pub unsafe extern "C" fn wxscan_scan_pixels(
         WxScanPixelFormat::Rgb => cvlite::color::rgb_to_gray(src, w, h),
         WxScanPixelFormat::Rgba => cvlite::color::rgba_to_gray(src, w, h),
         WxScanPixelFormat::Bgr => cvlite::color::bgr_to_gray(src, w, h),
-        WxScanPixelFormat::Bgra => bgra_to_gray(src, w, h),
+        WxScanPixelFormat::Bgra => cvlite::color::bgra_to_gray(src, w, h),
     };
     wxscan_scan_gray(scanner, gray.as_ptr(), width, height)
-}
-
-/// BGRA to grayscale. cvlite covers the other four layouts; this one is BGR
-/// with an ignored alpha, so it reads the three channels it needs in one pass
-/// rather than copying the buffer to swap them.
-fn bgra_to_gray(src: &[u8], width: usize, height: usize) -> Vec<u8> {
-    // The same fixed-point coefficients cvlite uses, so every layout converts
-    // identically.
-    const B2Y: u32 = 3735;
-    const G2Y: u32 = 19235;
-    const R2Y: u32 = 9798;
-    const SHIFT: u32 = 14;
-
-    let mut dst = vec![0u8; width * height];
-    for (out, px) in dst.iter_mut().zip(src.chunks_exact(4)) {
-        let (b, g, r) = (px[0] as u32, px[1] as u32, px[2] as u32);
-        *out = ((b * B2Y + g * G2Y + r * R2Y + (1 << (SHIFT - 1))) >> SHIFT) as u8;
-    }
-    dst
 }
 
 /// Prepare a camera frame and scan it.
@@ -198,6 +184,115 @@ pub unsafe extern "C" fn wxscan_scan_frame(
 
     let flip_x = (mirror_output != 0).then_some(ow as f32);
     into_c(results, candidates, ow as u32, oh as u32, flip_x)
+}
+
+/// Why [`wxscan_scan_path`] returned nothing.
+///
+/// A scan that finds no symbol is [`WxScanStatus::Ok`] with an empty result
+/// set, which is a different thing from a file that could not be read at all.
+/// Collapsing the two is how a picture the library never even saw comes back
+/// looking like a picture with no code in it.
+#[repr(i32)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum WxScanStatus {
+    /// The file was read and scanned. The result set may still be empty.
+    Ok = 0,
+    /// A null pointer, a path that is not UTF-8, or a null scanner.
+    BadArgument = 1,
+    /// The path could not be opened or read.
+    Unreadable = 2,
+    /// The bytes were read but are not an image this build can decode. PNG,
+    /// JPEG, BMP, GIF, WebP and TIFF are; HEIC is not, and nor is anything
+    /// else needing a system framework.
+    ///
+    /// A photo library is mostly HEIC, but a picker generally does not hand it
+    /// over that way: on iOS, `image_picker` sniffs the first byte, finds
+    /// neither JPEG nor PNG nor GIF, and re-encodes to JPEG on its way to disk.
+    /// The paths worth worrying about are the ones that come from somewhere
+    /// else — a file shared into the application, say — and a caller that has
+    /// to read those needs the platform's own decoder and
+    /// [`wxscan_scan_pixels`].
+    UnsupportedFormat = 3,
+}
+
+/// Read an image file and scan it.
+///
+/// This exists so that a caller holding a path does not have to decode the
+/// picture itself and hand over the pixels: a 12 megapixel photograph is 48 MB
+/// as RGBA, and a caller that crosses a thread or an isolate boundary pays for
+/// that buffer more than once. Here the file is read, decoded and reduced to
+/// grayscale without any of it crossing the boundary.
+///
+/// `status`, when not NULL, is set to a [`WxScanStatus`] saying what happened.
+/// Returns NULL for anything other than [`WxScanStatus::Ok`]. The result must
+/// be released with [`crate::results::wxscan_results_free`].
+///
+/// The orientation recorded in the file is applied, so a photograph taken with
+/// the phone turned sideways is scanned upright and the coordinates come back
+/// in the picture as it is meant to be seen.
+///
+/// # Safety
+/// `scanner` must come from [`crate::scanner::wxscan_scanner_new`], `path` must
+/// be a NUL terminated string, and `status`, when not NULL, must point to a
+/// writable [`WxScanStatus`].
+#[cfg(feature = "image-io")]
+#[no_mangle]
+pub unsafe extern "C" fn wxscan_scan_path(
+    scanner: *const WxScanScanner,
+    path: *const c_char,
+    status: *mut WxScanStatus,
+) -> *mut WxScanResults {
+    let set = |s: WxScanStatus| {
+        if !status.is_null() {
+            *status = s;
+        }
+    };
+
+    let Some(scanner) = scanner.as_ref() else {
+        set(WxScanStatus::BadArgument);
+        return std::ptr::null_mut();
+    };
+    if path.is_null() {
+        set(WxScanStatus::BadArgument);
+        return std::ptr::null_mut();
+    }
+    let Ok(path) = std::ffi::CStr::from_ptr(path).to_str() else {
+        set(WxScanStatus::BadArgument);
+        return std::ptr::null_mut();
+    };
+
+    // Opening and decoding are separate failures on purpose: a path that is not
+    // there and a file this build has no decoder for want different answers
+    // from the caller, and only the second is worth retrying another way.
+    let reader = match image::ImageReader::open(path).and_then(|r| r.with_guessed_format()) {
+        Ok(r) => r,
+        Err(_) => {
+            set(WxScanStatus::Unreadable);
+            return std::ptr::null_mut();
+        }
+    };
+    let Ok(decoder) = reader.into_decoder() else {
+        set(WxScanStatus::UnsupportedFormat);
+        return std::ptr::null_mut();
+    };
+    // Read before the decoder is consumed; a photograph usually stores its
+    // pixels in the sensor's orientation and the rotation as a tag beside them.
+    let mut decoder = decoder;
+    let orientation = decoder.orientation().ok();
+    let Ok(image) = image::DynamicImage::from_decoder(decoder) else {
+        set(WxScanStatus::UnsupportedFormat);
+        return std::ptr::null_mut();
+    };
+    let mut image = image;
+    if let Some(orientation) = orientation {
+        image.apply_orientation(orientation);
+    }
+
+    let gray = image.into_luma8();
+    let (w, h) = (gray.width() as usize, gray.height() as usize);
+    let (results, candidates) = scanner.scan_upright(&gray.into_raw(), w, h);
+    set(WxScanStatus::Ok);
+    into_c(results, candidates, w as u32, h as u32, None)
 }
 
 /// Link probe: returns 1 when the library is linked in correctly.

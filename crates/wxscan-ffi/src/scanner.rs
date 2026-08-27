@@ -94,8 +94,9 @@ pub unsafe extern "C" fn wxscan_scanner_new(
         // Each enabled backend gets a turn, so a build with both takes either
         // weight format and the caller does not have to say which it has.
         #[cfg(feature = "tflite")]
-        if let Ok(n) = wxscan::tflite::TfliteNet::from_bytes(bytes) {
-            return Ok(Some(Backend::Tflite(n)));
+        match wxscan::tflite::TfliteNet::from_bytes(bytes) {
+            Ok(n) => return Ok(Some(Backend::Tflite(n))),
+            Err(e) => eprintln!("wxscan: tflite refused the weights: {e}"),
         }
         #[cfg(feature = "tract")]
         if let Ok(n) = wxscan::backend::tract::TractNet::from_bytes(bytes) {

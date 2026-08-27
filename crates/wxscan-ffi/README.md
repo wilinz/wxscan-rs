@@ -22,6 +22,26 @@ wxscan_results_free(out);
 wxscan_scanner_free(scanner);
 ```
 
+For a picture on disk, `wxscan_scan_path` reads and decodes the file itself, so
+a caller holding a path never has to materialise the pixels: a 12 megapixel
+photograph is 48 MB as RGBA, and a caller that hands that across a thread or an
+isolate boundary pays for the buffer more than once.
+
+```c
+WxScanStatus status;
+WxScanResults *out = wxscan_scan_path(scanner, "/tmp/photo.jpg", &status);
+// status distinguishes a file that could not be read from a picture with no
+// code in it; the second is Ok with an empty result set.
+```
+
+The orientation recorded in the file is applied, so a photograph taken with the
+phone turned sideways scans upright and its coordinates match what was on
+screen. PNG, JPEG and GIF are decoded, which is everything a photo picker
+writes; HEIC is not, and a caller that must read one needs the platform's
+decoder and `wxscan_scan_pixels`. The entry point is behind the `image-io`
+feature, on by default; it costs 436 KB of decoders, so a build that has no use
+for it can leave it out.
+
 For camera frames, `wxscan_scan_frame` additionally takes a row stride, a
 rotation, and a flag that mirrors the returned x coordinates. The frame itself
 is never mirrored, because the detector is trained on unmirrored input; the flag
