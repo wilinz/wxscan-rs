@@ -29,20 +29,16 @@ OpenCV，没有 C++，用 `tract` 后端时连 C 都没有。
 
 ## 使用
 
-还没发到 crates.io，所以依赖从 git 引：
+```sh
+cargo add wxscan
+```
+
+也可以从 git 引，那样跟着默认分支走，加 `tag`、`branch` 或 `rev` 能钉死一个：
 
 ```toml
 [dependencies]
 wxscan = { git = "https://github.com/wilinz/wxscan-rs" }
 ```
-
-发布之后：
-
-```sh
-cargo add wxscan
-```
-
-git 这种写法跟着默认分支走，加 `tag`、`branch` 或 `rev` 可以钉死一个。
 
 **需要什么**
 
@@ -53,8 +49,8 @@ git 这种写法跟着默认分支走，加 `tag`、`branch` 或 `rev` 可以钉
 
 不内置任何二进制，构建脚本也不联网。
 
-`cvlite` 和 `wxing` 同样还没发布，而本 crate 是把它们当普通依赖写的，所以构建时得告诉
-cargo 去哪里找：
+从 git 引还多一件事。`cvlite` 和 `wxing` 是当普通依赖写的，所以从 git 取本 crate 的
+构建——而不是从 crates.io，那两个就在它旁边——得告诉 cargo 去哪儿找它们：
 
 ```toml
 [patch.crates-io]
@@ -117,14 +113,14 @@ CNN 推理藏在 `net::Net` trait 后面，算法的哪一部分都不知道是�
 布局转换也放在 tflite 适配器里：tflite 用 NHWC，trait 约定的是 NCHW。tract 那边不用
 转，ONNX 本来就是 NCHW，跟两种格式共同的来源 Caffe 模型一致。
 
-```toml
-wxscan = { git = "https://github.com/wilinz/wxscan-rs", default-features = false, features = ["tract"] }
-```
-
-发布之后：
-
 ```sh
 cargo add wxscan --no-default-features --features tract
+```
+
+从 git 引的话：
+
+```toml
+wxscan = { git = "https://github.com/wilinz/wxscan-rs", default-features = false, features = ["tract"] }
 ```
 
 tract 在 cargo 能到的任何地方都能编能跑，代价是比 tflite 的 XNNPACK 内核慢一些。两个

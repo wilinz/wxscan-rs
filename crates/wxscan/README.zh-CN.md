@@ -62,14 +62,14 @@ CNN 推理藏在 `net::Net` trait 后面，算法的哪一部分都不知道是�
 布局转换也放在 tflite 适配器里：tflite 用 NHWC，trait 约定的是 NCHW。tract 那边不用转，
 ONNX 本来就是 NCHW，跟两种格式共同的来源 Caffe 模型一致；而且 cargo 能到的地方它都能编：
 
-```toml
-wxscan = { git = "https://github.com/wilinz/wxscan-rs", default-features = false, features = ["tract"] }
-```
-
-发布之后：
-
 ```sh
 cargo add wxscan --no-default-features --features tract
+```
+
+从 git 引的话：
+
+```toml
+wxscan = { git = "https://github.com/wilinz/wxscan-rs", default-features = false, features = ["tract"] }
 ```
 
 不管开哪些 feature，在 `wasm32-unknown-unknown` 上都有一件事必须做：宿主得在模块
@@ -80,14 +80,14 @@ cargo add wxscan --no-default-features --features tract
 
 两个都关掉，剩下的核心没有推理，也没有 C 依赖，普通的 `cargo build` 就能编：
 
-```toml
-wxscan = { git = "https://github.com/wilinz/wxscan-rs", default-features = false }
-```
-
-发布之后：
-
 ```sh
 cargo add wxscan --no-default-features
+```
+
+从 git 引的话：
+
+```toml
+wxscan = { git = "https://github.com/wilinz/wxscan-rs", default-features = false }
 ```
 
 一个后端就是一个方法。trait 就在这里，所以你自己的 crate 可以给自己的类型实现：

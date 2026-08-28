@@ -35,21 +35,17 @@ library; the `tract` backend needs nothing outside Rust, so cross-compiling is
 
 ## Usage
 
-Not on crates.io yet, so a dependency comes from git:
+```sh
+cargo add wxscan
+```
+
+Or from git, which follows the default branch until a `tag`, `branch` or `rev`
+pins it:
 
 ```toml
 [dependencies]
 wxscan = { git = "https://github.com/wilinz/wxscan-rs" }
 ```
-
-The day it is published:
-
-```sh
-cargo add wxscan
-```
-
-The git form follows the default branch; add a `tag`, `branch` or `rev` to pin
-one.
 
 **What you need**
 
@@ -60,8 +56,9 @@ one.
 
 Nothing is vendored and no build script reaches the network.
 
-`cvlite` and `wxing` are not published either, and this crate names them as
-ordinary dependencies, so a build has to say where they are:
+The git route has one more requirement. `cvlite` and `wxing` are named as
+ordinary dependencies, so a build that takes this crate from git — rather than
+from crates.io, where those two sit beside it — has to say where they are:
 
 ```toml
 [patch.crates-io]
@@ -127,14 +124,14 @@ The tflite adapter is also where layout conversion lives, since tflite is NHWC
 while the trait contract is NCHW. tract needs none: ONNX is NCHW, like the Caffe
 models both formats are converted from.
 
-```toml
-wxscan = { git = "https://github.com/wilinz/wxscan-rs", default-features = false, features = ["tract"] }
-```
-
-Once published:
-
 ```sh
 cargo add wxscan --no-default-features --features tract
+```
+
+Or, from git:
+
+```toml
+wxscan = { git = "https://github.com/wilinz/wxscan-rs", default-features = false, features = ["tract"] }
 ```
 
 tract builds and runs anywhere cargo does, at some cost in speed against

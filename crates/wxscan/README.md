@@ -68,14 +68,14 @@ The tflite adapter is also where layout conversion lives: tflite is NHWC, the
 trait contract is NCHW. tract needs none, ONNX being NCHW like the Caffe models
 both formats are converted from, and it builds anywhere cargo does:
 
-```toml
-wxscan = { git = "https://github.com/wilinz/wxscan-rs", default-features = false, features = ["tract"] }
-```
-
-Once published:
-
 ```sh
 cargo add wxscan --no-default-features --features tract
+```
+
+Or, from git:
+
+```toml
+wxscan = { git = "https://github.com/wilinz/wxscan-rs", default-features = false, features = ["tract"] }
 ```
 
 One thing is needed on `wasm32-unknown-unknown` whatever the features: the host
@@ -87,14 +87,14 @@ no clock to lend can return a constant, and every stage then reports zero.
 Turning both off leaves a core with no inference and no C dependency, which
 builds with plain `cargo build`:
 
-```toml
-wxscan = { git = "https://github.com/wilinz/wxscan-rs", default-features = false }
-```
-
-Once published:
-
 ```sh
 cargo add wxscan --no-default-features
+```
+
+Or, from git:
+
+```toml
+wxscan = { git = "https://github.com/wilinz/wxscan-rs", default-features = false }
 ```
 
 A backend is one method. The trait lives here, so a crate of your own can
