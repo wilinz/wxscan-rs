@@ -32,7 +32,7 @@ M-series Mac, with simd128 on:
 
 | | Module | Gzipped | Scan | Needs |
 |---|---|---|---|---|
-| host (default) | 433 KB | 221 KB | 332 ms | an engine in the host: [tools/tflite-wasm](../../tools/tflite-wasm), 3.0 MB more |
+| host (default) | 433 KB | 221 KB | 332 ms | an engine in the host: [wxscan-litert-wasm](https://github.com/wilinz/wxscan-litert-wasm), 3.0 MB more |
 | `tract` | 12.5 MB | 2.9 MB | 347 ms | nothing |
 | no models at all | 242 KB | 155 KB | 20 ms | nothing, and finds far fewer symbols |
 
@@ -90,8 +90,8 @@ the module only needs to know which networks it may ask for.
 rules out LiteRT.js, whose `run` returns a promise on every backend, and it
 rules out bridging the gap with Asyncify, which was measured at 37% more module
 and 2.3 times the run time. The host that works is a second wasm module:
-[`tools/tflite-wasm`](../../tools/tflite-wasm) builds the TensorFlow Lite C
-runtime for the browser, whose API is synchronous, takes the same `.tflite`
+[wxscan-litert-wasm](https://github.com/wilinz/wxscan-litert-wasm) builds the TensorFlow Lite C runtime for the browser,
+whose API is synchronous, takes the same `.tflite`
 weights as the native build, and resizes to whatever shape a frame produced.
 
 `--features debug-log` adds a third import, `wxscan_host_log`, and an exported

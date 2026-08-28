@@ -10,10 +10,11 @@
 #
 # The TensorFlow Lite runtime is not built here and is not in these releases.
 # It is a dependency rather than this repository's code, it takes ten minutes
-# rather than seconds, and it changes on its own rhythm; tflite-wasm.yml gives
-# it its own tag and its own release, so that every version of the scanner does
-# not drag another copy of it along. A consumer pins the two separately —
-# wxscan's tool/web.lock has a line for each.
+# rather than seconds, and it changes on its own rhythm, so it is built in
+# wilinz/wxscan-litert-wasm and released there, under a tag of its own, so that
+# every version of the scanner does not drag another copy of it along. A
+# consumer pins the two separately — wxscan's tool/web.lock has a line for
+# each.
 name: wasm
 
 on:
@@ -114,7 +115,7 @@ jobs:
 
           This tag moves. For bytes that stay put, take a version release. The
           TensorFlow Lite runtime a browser also needs is published separately,
-          under its own \`tflite-\` tag.
+          in wilinz/wxscan-litert-wasm.
 
           \`wxscan_wasm.build\` beside the module names the commit, the
           compiler and the flags it was built with."

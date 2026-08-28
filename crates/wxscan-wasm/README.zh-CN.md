@@ -29,7 +29,7 @@ cargo build -p wxscan-wasm --target wasm32-unknown-unknown --profile wasm \
 
 | | 模块 | Gzip 后 | 扫描 | 需要 |
 |---|---|---|---|---|
-| host（默认） | 433 KB | 221 KB | 332 ms | 宿主侧的一个引擎：[tools/tflite-wasm](../../tools/tflite-wasm)，另外 3.0 MB |
+| host（默认） | 433 KB | 221 KB | 332 ms | 宿主侧的一个引擎：[wxscan-litert-wasm](https://github.com/wilinz/wxscan-litert-wasm)，另外 3.0 MB |
 | `tract` | 12.5 MB | 2.9 MB | 347 ms | 无 |
 | 完全不带模型 | 242 KB | 155 KB | 20 ms | 无，但能找到的符号少得多 |
 
@@ -77,7 +77,7 @@ panic，所以没有宿主时钟的话，`wxscan_wasm_take_stages` 背后的各�
 **这些导入是同步的，而 JavaScript 的推理 API 不是。** 这就排除了 LiteRT.js，它的 `run`
 在每个后端上都返回 promise；也排除了用 Asyncify 去弥合这个落差，实测那会让模块大 37%，
 运行时间变成 2.3 倍。行得通的宿主是第二个 wasm 模块：
-[`tools/tflite-wasm`](../../tools/tflite-wasm) 为浏览器构建 TensorFlow Lite C 运行时，
+[wxscan-litert-wasm](https://github.com/wilinz/wxscan-litert-wasm) 为浏览器构建 TensorFlow Lite C 运行时，
 它的 API 是同步的，吃的是和原生构建一样的 `.tflite` 权重，还能 resize 到一帧产生的
 任何形状。
 
