@@ -30,6 +30,23 @@ wxscan_results_free(out);
 wxscan_scanner_release(scanner);
 ```
 
+权重在磁盘上就改传路径，文件由本库来读，这样绑定层不需要自己的文件 API，一兆字节也
+不用过它那道边界：
+
+```c
+WxScanStatus status;
+WxScanScannerId scanner =
+    wxscan_scanner_new_path("/var/wxscan/detect.tflite",
+                            "/var/wxscan/sr.tflite", &status);
+// 返回 0 时看 status，它说的是路径错在哪一种：BadArgument 是字符串不是 UTF-8，
+// Unreadable 是文件打不开，WeightsRefused 是文件读到了但不是这个构建能加载的
+// 权重。打错字、没下载、拿错文件，是三个不同的错，也在三个不同的地方修。
+```
+
+两个路径都可以传 NULL，意思是那个网络不存在，跟上面传 NULL 缓冲一样。这个入口在
+`model-fs` feature 后面，默认开着。它只用到 `std::fs`，但 wasm 构建会跟其它默认项一起
+把它关掉，而不是带上一个只可能失败的函数——浏览器没有文件系统可读。
+
 磁盘上的图片交给 `wxscan_scan_path`，它自己读文件、自己解码，所以手上只有一个路径的
 调用方永远不必把像素落地。一张 1200 万像素的照片按 RGBA 算是 48 MB，而把它跨线程或者
 跨 isolate 传一遍的调用方，这块缓冲要付的代价不止一次。

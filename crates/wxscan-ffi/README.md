@@ -32,6 +32,27 @@ wxscan_results_free(out);
 wxscan_scanner_release(scanner);
 ```
 
+Weights on disk go by path instead, and this library reads them, so a binding
+does not need a file API of its own and a megabyte never crosses its boundary:
+
+```c
+WxScanStatus status;
+WxScanScannerId scanner =
+    wxscan_scanner_new_path("/var/wxscan/detect.tflite",
+                            "/var/wxscan/sr.tflite", &status);
+// Zero means status says which of the three ways a path can be wrong it was:
+// BadArgument for a string that is not UTF-8, Unreadable for a file that will
+// not open, WeightsRefused for one that reads but is no model this build can
+// load. A typo, a download that never happened and the wrong file are three
+// different mistakes, fixed in three different places.
+```
+
+Either path may be NULL, meaning that network is absent, exactly as a NULL
+buffer is above. The entry point is behind the `model-fs` feature, on by
+default. It costs only `std::fs`, but the wasm build leaves it off with the
+rest of the defaults rather than carry a function that could only fail: a
+browser has no filesystem to read.
+
 For a picture on disk, `wxscan_scan_path` reads and decodes the file itself, so
 a caller holding a path never has to materialise the pixels: a 12 megapixel
 photograph is 48 MB as RGBA, and a caller that hands that across a thread or an
