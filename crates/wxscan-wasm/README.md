@@ -1,5 +1,7 @@
 # wxscan-wasm
 
+**English** · [简体中文](README.zh-CN.md)
+
 The [wxscan](../wxscan) C ABI as a WebAssembly module, for browsers. The
 artifact is a `.wasm` file; this crate is not published.
 

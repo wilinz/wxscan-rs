@@ -1,5 +1,7 @@
 # TFLite for the browser
 
+**English** · [简体中文](README.zh-CN.md)
+
 `build.sh` produces `wxscan_tflite.js` and `wxscan_tflite.wasm`: the TensorFlow
 Lite C runtime with the XNNPACK delegate, compiled to WebAssembly, plus the
 small shim in [`host.cc`](host.cc) that

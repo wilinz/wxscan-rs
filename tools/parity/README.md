@@ -1,5 +1,7 @@
 # Parity with the upstream C++ implementation
 
+**English** · [简体中文](README.zh-CN.md)
+
 The same images are fed to OpenCV's `wechat_qrcode` (the original C++
 implementation) and to the Rust port in this repository, and the decoded text
 and the four corner coordinates are compared image by image.

@@ -1,5 +1,7 @@
 # wxscan-ffi
 
+**English** · [简体中文](README.zh-CN.md)
+
 The C ABI for [`wxscan`](../wxscan), for callers in C,
 C++, Swift, Kotlin, Python and elsewhere.
 

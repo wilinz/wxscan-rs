@@ -1,5 +1,7 @@
 # wxscan-rs
 
+**English** · [简体中文](README.zh-CN.md)
+
 The `wechat_qrcode` algorithm from OpenCV contrib, in Rust: a CNN locates the
 symbols in a frame, a second network upscales each crop, and a fork of ZXing
 decodes them. No OpenCV, no C++, and with the `tract` backend no C at all.

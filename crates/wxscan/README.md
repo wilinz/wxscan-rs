@@ -1,5 +1,7 @@
 # wxscan
 
+**English** · [简体中文](README.zh-CN.md)
+
 A Rust port of the `wechat_qrcode` algorithm from OpenCV contrib: CNN-based
 detection, super resolution, and decoding. No OpenCV dependency.
 
@@ -24,8 +26,8 @@ on by zooming in rather than reporting a failure.
 ## What it is made of
 
 The pieces that are not specific to this algorithm are separate crates:
-[`cvlite`](https://crates.io/crates/cvlite) for the OpenCV functions used, and
-[`wxing`](https://crates.io/crates/wxing) for the ZXing fork the decoder comes
+[`cvlite`](https://github.com/wilinz/cvlite) for the OpenCV functions used, and
+[`wxing`](https://github.com/wilinz/wxing) for the ZXing fork the decoder comes
 from. This crate holds the parts that are: the SSD detector, the super
 resolution stage, and the orchestration around them.
 
@@ -59,7 +61,7 @@ trait contract is NCHW. tract needs none, ONNX being NCHW like the Caffe models
 both formats are converted from, and it builds anywhere cargo does:
 
 ```toml
-wxscan = { version = "0.1", default-features = false, features = ["tract"] }
+wxscan = { git = "https://github.com/wilinz/wxscan-rs", default-features = false, features = ["tract"] }
 ```
 
 One thing is needed on `wasm32-unknown-unknown` whatever the features: the host
@@ -72,7 +74,7 @@ Turning both off leaves a core with no inference and no C dependency, which
 builds with plain `cargo build`:
 
 ```toml
-wxscan = { version = "0.1", default-features = false }
+wxscan = { git = "https://github.com/wilinz/wxscan-rs", default-features = false }
 ```
 
 A backend is one method. The trait lives here, so a crate of your own can
