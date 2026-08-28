@@ -59,6 +59,7 @@ CNN 推理藏在 `net::Net` trait 后面，算法的任何部分都不知道是�
 
 ```toml
 wxscan = { git = "https://github.com/wilinz/wxscan-rs", default-features = false, features = ["tract"] }
+# wxscan = { version = "0.1", default-features = false, features = ["tract"] }   # 发布后
 ```
 
 不论开哪些 feature，在 `wasm32-unknown-unknown` 上都有一件事必须做：宿主必须在模块
@@ -71,6 +72,7 @@ wxscan = { git = "https://github.com/wilinz/wxscan-rs", default-features = false
 
 ```toml
 wxscan = { git = "https://github.com/wilinz/wxscan-rs", default-features = false }
+# wxscan = { version = "0.1", default-features = false }   # 发布后
 ```
 
 一个后端就是一个方法。这个 trait 就在这里，所以你自己的 crate 可以为自己的类型

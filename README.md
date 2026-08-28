@@ -27,14 +27,17 @@ library; the `tract` backend needs nothing outside Rust, so cross-compiling is
 
 ## Usage
 
-Not on crates.io yet, so take it from git:
+Not on crates.io yet. Both forms are written out, so that the day it is
+published the switch is one line:
 
 ```toml
 [dependencies]
 wxscan = { git = "https://github.com/wilinz/wxscan-rs" }
+# wxscan = "0.1"                    # from crates.io, once published
 ```
 
-That follows the default branch; add a `tag`, `branch` or `rev` to pin one.
+The git form follows the default branch; add a `tag`, `branch` or `rev` to pin
+one.
 
 `cvlite` and `wxing` are not published either, and this crate names them as
 ordinary dependencies, so a build has to say where they are:
@@ -105,6 +108,7 @@ models both formats are converted from.
 
 ```toml
 wxscan = { git = "https://github.com/wilinz/wxscan-rs", default-features = false, features = ["tract"] }
+# wxscan = { version = "0.1", default-features = false, features = ["tract"] }   # once published
 ```
 
 tract builds and runs anywhere cargo does, at some cost in speed against

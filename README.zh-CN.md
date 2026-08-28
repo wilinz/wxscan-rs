@@ -24,14 +24,15 @@ Rust 之外的任何东西，所以交叉编译就是一句 `cargo build --targe
 
 ## 使用
 
-还没发到 crates.io，所以从 git 引入：
+还没发到 crates.io。两种写法都列在这里，等到发布那天切换只是改一行：
 
 ```toml
 [dependencies]
 wxscan = { git = "https://github.com/wilinz/wxscan-rs" }
+# wxscan = "0.1"                    # 发布后从 crates.io 引入
 ```
 
-这样会跟随默认分支；加 `tag`、`branch` 或 `rev` 可以固定一个。
+git 那种写法跟随默认分支；加 `tag`、`branch` 或 `rev` 可以固定一个。
 
 `cvlite` 和 `wxing` 同样没有发布，而本 crate 是把它们当普通依赖来写的，所以构建时
 必须告诉 cargo 它们在哪：
@@ -99,6 +100,7 @@ CNN 推理藏在 `net::Net` trait 后面，算法的任何部分都不知道是�
 
 ```toml
 wxscan = { git = "https://github.com/wilinz/wxscan-rs", default-features = false, features = ["tract"] }
+# wxscan = { version = "0.1", default-features = false, features = ["tract"] }   # 发布后
 ```
 
 tract 在 cargo 能到的任何地方都能构建和运行，代价是相对 tflite 的 XNNPACK 内核慢一些。
@@ -144,7 +146,7 @@ TFLITE_LIB_DIR=/path/to/libs cargo test --workspace
 
 `tools/parity` 把同一批图片分别喂给 OpenCV 的 `wechat_qrcode` 和这个移植，比较解码
 文本和角点坐标。当前结果在
-[`tools/parity/README.md`](tools/parity/README.md)：无模型时文本在 160 张里对上
+[`tools/parity/README.zh-CN.md`](tools/parity/README.zh-CN.md)：无模型时文本在 160 张里对上
 159 张，有模型时场景图 24/24 全对，角点坐标除两张外逐位相同，那两张的差异在亚像素
 级别。
 
