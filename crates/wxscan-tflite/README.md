@@ -1,7 +1,7 @@
 # wxscan-tflite
 
 A minimal FFI binding to libtensorflowlite_c, the LiteRT C API. It is the
-default inference backend of [`wxscan`](https://crates.io/crates/wxscan), and is
+default inference backend of [`wxscan`](../wxscan), and is
 usable on its own as a small tflite binding.
 
 ```rust

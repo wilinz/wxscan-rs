@@ -1,6 +1,6 @@
 # wxscan-ffi
 
-The C ABI for [`wxscan`](https://crates.io/crates/wxscan), for callers in C,
+The C ABI for [`wxscan`](../wxscan), for callers in C,
 C++, Swift, Kotlin, Python and elsewhere.
 
 `include/wxscan.h` is generated from these sources with cbindgen and committed,

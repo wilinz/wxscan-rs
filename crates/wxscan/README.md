@@ -51,7 +51,7 @@ knows which library runs it. Two backends ship, both in the `backend` module:
 
 | Feature | Engine | Weights | C dependency |
 |---|---|---|---|
-| `tflite` (default) | [`wxscan-tflite`](https://crates.io/crates/wxscan-tflite) | `detect.tflite`, `sr.tflite` | libtensorflowlite_c |
+| `tflite` (default) | [`wxscan-tflite`](../wxscan-tflite) | `detect.tflite`, `sr.tflite` | libtensorflowlite_c |
 | `tract` | [tract](https://crates.io/crates/tract-onnx) | `detect.onnx`, `sr.onnx` | none |
 
 The tflite adapter is also where layout conversion lives: tflite is NHWC, the
