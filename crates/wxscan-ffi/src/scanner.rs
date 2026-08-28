@@ -187,6 +187,26 @@ impl WxScanScanner {
     }
 }
 
+/// One weight buffer to a backend, or None when nothing in this build takes it.
+///
+/// Shared by the two constructors so that the buffer and the file forms cannot
+/// drift apart on which formats they accept.
+fn backend_from_bytes(bytes: &[u8]) -> Option<Backend> {
+    // Each enabled backend gets a turn, so a build with both takes either
+    // weight format and the caller does not have to say which it has.
+    #[cfg(feature = "tflite")]
+    match wxscan::tflite::TfliteNet::from_bytes(bytes) {
+        Ok(n) => return Some(Backend::Tflite(n)),
+        Err(e) => eprintln!("wxscan: tflite refused the weights: {e}"),
+    }
+    #[cfg(feature = "tract")]
+    if let Ok(n) = wxscan::backend::tract::TractNet::from_bytes(bytes) {
+        return Some(Backend::Tract(n));
+    }
+    let _ = bytes;
+    None
+}
+
 /// Create a scanner from in-memory model buffers.
 ///
 /// Passing NULL for both models selects the image-processing-only mode. It
@@ -210,20 +230,9 @@ pub unsafe extern "C" fn wxscan_scanner_new(
         if p.is_null() || n == 0 {
             return Ok(None);
         }
-        let bytes = std::slice::from_raw_parts(p, n);
-        // Each enabled backend gets a turn, so a build with both takes either
-        // weight format and the caller does not have to say which it has.
-        #[cfg(feature = "tflite")]
-        match wxscan::tflite::TfliteNet::from_bytes(bytes) {
-            Ok(n) => return Ok(Some(Backend::Tflite(n))),
-            Err(e) => eprintln!("wxscan: tflite refused the weights: {e}"),
-        }
-        #[cfg(feature = "tract")]
-        if let Ok(n) = wxscan::backend::tract::TractNet::from_bytes(bytes) {
-            return Ok(Some(Backend::Tract(n)));
-        }
-        let _ = bytes;
-        Err(())
+        backend_from_bytes(std::slice::from_raw_parts(p, n))
+            .map(Some)
+            .ok_or(())
     };
 
     let (detect, sr) = match (load(detect, detect_len), load(sr, sr_len)) {
@@ -231,6 +240,76 @@ pub unsafe extern "C" fn wxscan_scanner_new(
         _ => return 0,
     };
 
+    register(WxScanScanner {
+        inner: Mutex::new(WeChatQRCode::new(detect, sr)),
+    })
+}
+
+/// Create a scanner from model files on disk.
+///
+/// The same scanner [`wxscan_scanner_new`] builds, for a caller that has paths
+/// rather than bytes — weights downloaded to a cache directory, say. The files
+/// are read here, so a megabyte of weights never crosses the caller's language
+/// boundary, and a binding does not need a file API of its own to offer this.
+///
+/// Either path may be NULL, meaning that network is simply absent, exactly as
+/// a NULL buffer is to [`wxscan_scanner_new`]. Both NULL is the mode without
+/// models.
+///
+/// Returns zero on any failure, and sets `status`, when not NULL, to say
+/// which: a path that is not UTF-8 is [`WxScanStatus::BadArgument`], a file
+/// that will not open is [`WxScanStatus::Unreadable`], and one that reads but
+/// is not weights this build can load is [`WxScanStatus::WeightsRefused`].
+/// Those are three different mistakes — a typo, a download that has not
+/// happened, a file that is not a model — and only the caller can tell which
+/// it made.
+///
+/// Release with [`wxscan_scanner_release`].
+///
+/// # Safety
+/// Each path, when not NULL, must be a NUL terminated string, and `status`,
+/// when not NULL, must point to a writable [`WxScanStatus`].
+#[cfg(feature = "model-fs")]
+#[no_mangle]
+pub unsafe extern "C" fn wxscan_scanner_new_path(
+    detect_path: *const std::ffi::c_char,
+    sr_path: *const std::ffi::c_char,
+    status: *mut crate::WxScanStatus,
+) -> WxScanScannerId {
+    use crate::WxScanStatus;
+
+    let set = |s: WxScanStatus| {
+        if !status.is_null() {
+            *status = s;
+        }
+    };
+
+    let load = |p: *const std::ffi::c_char| -> Result<Option<Backend>, WxScanStatus> {
+        if p.is_null() {
+            return Ok(None);
+        }
+        let path = std::ffi::CStr::from_ptr(p)
+            .to_str()
+            .map_err(|_| WxScanStatus::BadArgument)?;
+        // Absent and unloadable are kept apart all the way out to the caller:
+        // a path that is not there is a mistake in the calling code, while a
+        // file that is there and will not load is a mistake in what was
+        // downloaded, and the two are fixed in different places.
+        let bytes = std::fs::read(path).map_err(|_| WxScanStatus::Unreadable)?;
+        backend_from_bytes(&bytes)
+            .map(Some)
+            .ok_or(WxScanStatus::WeightsRefused)
+    };
+
+    let (detect, sr) = match (load(detect_path), load(sr_path)) {
+        (Ok(d), Ok(s)) => (d, s),
+        (Err(e), _) | (_, Err(e)) => {
+            set(e);
+            return 0;
+        }
+    };
+
+    set(WxScanStatus::Ok);
     register(WxScanScanner {
         inner: Mutex::new(WeChatQRCode::new(detect, sr)),
     })

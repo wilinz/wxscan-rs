@@ -217,6 +217,11 @@ pub enum WxScanStatus {
     /// to read those needs the platform's own decoder and
     /// [`wxscan_scan_pixels`].
     UnsupportedFormat = 3,
+    /// Weights were read but no backend in this build would take them. Only
+    /// [`crate::scanner::wxscan_scanner_new_path`] reports this: a file that
+    /// is not a model is a different mistake from one that is not there, and
+    /// the caller who passed the path is the only one who can tell them apart.
+    WeightsRefused = 4,
 }
 
 /// Read an image file and scan it.

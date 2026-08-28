@@ -24,7 +24,7 @@ name = "wxscan_ffi"
 crate-type = ["staticlib", "rlib"]
 
 [features]
-default = ["tflite", "image-io"]
+default = ["tflite", "image-io", "model-fs"]
 # The inference backends. Both may be on at once, in which case a model buffer
 # is tried as TFLite and then as ONNX, so one binary takes either format.
 tflite = ["wxscan/tflite"]
@@ -43,6 +43,11 @@ host-net = []
 # `wxscan_set_image_decoder` is the answer to that one, and the platform lends
 # what it already has.
 image-io = ["dep:image"]
+# Loading weights from a path, for `wxscan_scanner_new_path`. Only std::fs, so
+# it costs a few hundred bytes rather than a decoder — but a browser has no
+# filesystem to read, so the wasm build leaves it off with the rest of the
+# defaults and does not carry a function that could only ever fail.
+model-fs = []
 
 
 [dependencies]
