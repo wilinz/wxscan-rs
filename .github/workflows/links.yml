@@ -1,0 +1,34 @@
+# Every markdown link points at something that exists.
+#
+# The commit that added a "What you need" table to the README linked
+# `#tflite-library`; the heading is "The TFLite library", so the anchor named
+# nothing and the link scrolled nowhere. Nothing about that is visible while
+# writing — GitHub renders a dead anchor exactly like a live one — so they
+# accumulate until someone reads the README with a mouse. Six more of the same
+# kind were sitting in the Dart repository at the time.
+#
+# The README of every crate here is also its crates.io page, which is where a
+# broken relative path is least recoverable: a reader who lands on nothing has
+# no repository in front of them to look around in.
+#
+# Relative paths and anchors only; external links are not fetched. A job that
+# talks to the network fails on rate limits and on sites that answer robots
+# differently than browsers — crates.io returns 404 to anything without a
+# browser's user agent — and a check that cries wolf stops being read.
+name: links
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  markdown:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 tools/check_links.py
