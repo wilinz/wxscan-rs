@@ -12,17 +12,17 @@
 #![cfg(feature = "image-io")]
 
 use wxscan_ffi::{
-    wxscan_results_free, wxscan_scan_bytes, wxscan_scanner_free, wxscan_scanner_new,
-    WxScanScanner, WxScanStatus,
+    wxscan_results_free, wxscan_scan_bytes, wxscan_scanner_release, wxscan_scanner_new,
+    WxScanScannerId, WxScanStatus,
 };
 
 fn bytes(name: &str) -> Vec<u8> {
     std::fs::read(format!("{}/tests/data/{name}", env!("CARGO_MANIFEST_DIR"))).unwrap()
 }
 
-unsafe fn plain_scanner() -> *mut WxScanScanner {
+unsafe fn plain_scanner() -> WxScanScannerId {
     let s = wxscan_scanner_new(std::ptr::null(), 0, std::ptr::null(), 0);
-    assert!(!s.is_null());
+    assert_ne!(s, 0);
     s
 }
 
@@ -43,7 +43,7 @@ fn built_in_reads(name: &str) -> bool {
             assert_eq!((*out).results_len, 1, "{name}");
             wxscan_results_free(out);
         }
-        wxscan_scanner_free(scanner);
+        wxscan_scanner_release(scanner);
         ok
     }
 }

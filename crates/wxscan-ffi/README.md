@@ -10,7 +10,8 @@ so consumers need neither cbindgen nor a Rust toolchain.
 #include "wxscan.h"
 
 // Both models may be NULL, which decodes without the CNN stages.
-WxScanScanner *scanner = wxscan_scanner_new(detect, detect_len, sr, sr_len);
+// The handle is zero if the weights could not be loaded.
+WxScanScannerId scanner = wxscan_scanner_new(detect, detect_len, sr, sr_len);
 
 // An upright, tightly packed grayscale image.
 WxScanResults *out = wxscan_scan_gray(scanner, gray, width, height);
@@ -19,7 +20,7 @@ for (size_t i = 0; i < out->results_len; i++) {
 }
 wxscan_results_free(out);
 
-wxscan_scanner_free(scanner);
+wxscan_scanner_release(scanner);
 ```
 
 For a picture on disk, `wxscan_scan_path` reads and decodes the file itself, so
@@ -54,6 +55,34 @@ that caller's binding layer.
 The scanner is an explicit handle rather than a global, so several can coexist
 with different models and calls do not contend on one lock. One instance scans
 one frame at a time.
+
+### The handle is not a pointer
+
+`WxScanScannerId` is a number this library hands out and looks up in a table of
+its own. A handle that was released, or never existed, or was invented by a
+caller resolves to nothing and comes back as an ordinary failure — a zero, a
+NULL result, `WxScanStatus::BadArgument`. An address would instead be
+dereferenced, and the crash would land nowhere near the mistake.
+
+Handles are never reused, so a stale one can never come to name a different
+scanner later.
+
+It is also reference counted, because two sides routinely hold one scanner and
+neither can see the other's lifetime — a managed application holding one for
+still pictures while a camera binding decodes frames with the same handle:
+
+```c
+wxscan_scanner_retain(scanner);   // the camera binding is a holder now
+...
+wxscan_scanner_release(scanner);  // and gives it back; the last one out frees
+```
+
+A single-holder caller never calls retain, and pairs `new` with `release` as it
+would with any other allocation. Releasing a handle that is already gone does
+nothing, and a debug build says so on stderr — but a second release while
+another holder is still in takes *that holder's* reference, silently. Nothing
+can detect it: the two releases are indistinguishable. Release once per
+reference taken.
 
 ## Linking
 

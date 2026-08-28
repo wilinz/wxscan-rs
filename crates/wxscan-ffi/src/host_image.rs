@@ -93,7 +93,20 @@ static DECODER: Mutex<Option<WxScanImageDecoder>> = Mutex::new(None);
 ///
 /// # Safety
 /// `decoder`, when not NULL, must point to a readable [`WxScanImageDecoder`]
-/// whose function pointers stay valid until they are replaced or cleared.
+/// whose function pointers, and the `ctx` beside them, stay valid **for the
+/// life of the process** — not merely until they are replaced or cleared.
+///
+/// Replacing or clearing a registration does not wait for decodes already
+/// under way. A decode that has read the slot but not yet called through it
+/// will still call the retired pointers with the retired `ctx`, so a host that
+/// frees that context, drops a reference the context holds, or unloads the
+/// code behind those pointers once this returns has a use-after-free. There is
+/// nowhere to put a wait: the alternative is holding the registration lock
+/// across the decode, which would serialise every picture in the process
+/// behind every other.
+///
+/// Registering once at start-up and leaving it, which is what a decoder built
+/// into an application does, sidesteps this entirely.
 #[no_mangle]
 pub unsafe extern "C" fn wxscan_set_image_decoder(decoder: *const WxScanImageDecoder) {
     let mut slot = DECODER.lock().unwrap_or_else(|e| e.into_inner());

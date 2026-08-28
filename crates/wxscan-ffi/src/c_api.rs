@@ -11,6 +11,9 @@ use image::ImageDecoder;
 
 use wxscan::frame::upright_gray;
 use crate::results::{into_c, WxScanResults};
+use crate::scanner::WxScanScannerId;
+// Only the decoding paths hold a resolved scanner in a signature of their own.
+#[cfg(feature = "image-io")]
 use crate::scanner::WxScanScanner;
 
 /// Slice a caller-provided buffer after validating the geometry.
@@ -26,10 +29,12 @@ unsafe fn frame_slice<'a>(
     if data.is_null() || width <= 0 || height <= 0 || row_stride < width {
         return None;
     }
-    Some(std::slice::from_raw_parts(
-        data,
-        row_stride as usize * height as usize,
-    ))
+    // Checked, because `usize` is 32 bits on wasm32 and on 32-bit Android: a
+    // frame claiming dimensions whose product wraps would otherwise be turned
+    // into a short slice, and the read past its end blamed on the caller.
+    // Refusing the geometry is what this function is for.
+    let len = (row_stride as usize).checked_mul(height as usize)?;
+    Some(std::slice::from_raw_parts(data, len))
 }
 
 /// Run detection and decoding on an upright, tightly packed grayscale image.
@@ -39,12 +44,11 @@ unsafe fn frame_slice<'a>(
 /// [`crate::results::wxscan_results_free`].
 ///
 /// # Safety
-/// `scanner` must come from [`crate::scanner::wxscan_scanner_new`] and `data`
-/// must point to at least `width * height` readable bytes that stay valid for
-/// the duration of the call.
+/// `data` must point to at least `width * height` readable bytes that stay
+/// valid for the duration of the call.
 #[no_mangle]
 pub unsafe extern "C" fn wxscan_scan_gray(
-    scanner: *const WxScanScanner,
+    scanner: WxScanScannerId,
     data: *const u8,
     width: i32,
     height: i32,
@@ -103,12 +107,11 @@ impl WxScanPixelFormat {
 /// [`crate::results::wxscan_results_free`].
 ///
 /// # Safety
-/// `scanner` must come from [`crate::scanner::wxscan_scanner_new`] and `data`
-/// must point to at least that many readable bytes, valid for the duration of
-/// the call.
+/// `data` must point to at least that many readable bytes, valid for the
+/// duration of the call.
 #[no_mangle]
 pub unsafe extern "C" fn wxscan_scan_pixels(
-    scanner: *const WxScanScanner,
+    scanner: WxScanScannerId,
     data: *const u8,
     width: i32,
     height: i32,
@@ -117,7 +120,7 @@ pub unsafe extern "C" fn wxscan_scan_pixels(
     let Some(format) = WxScanPixelFormat::from_raw(format) else {
         return std::ptr::null_mut();
     };
-    if scanner.is_null() || data.is_null() || width <= 0 || height <= 0 {
+    if data.is_null() || width <= 0 || height <= 0 {
         return std::ptr::null_mut();
     }
     let (w, h) = (width as usize, height as usize);
@@ -152,12 +155,11 @@ pub unsafe extern "C" fn wxscan_scan_pixels(
 /// [`crate::results::wxscan_results_free`].
 ///
 /// # Safety
-/// `scanner` must come from [`crate::scanner::wxscan_scanner_new`] and `data`
-/// must point to at least `row_stride * height` readable bytes that stay valid
-/// for the duration of the call.
+/// `data` must point to at least `row_stride * height` readable bytes that
+/// stay valid for the duration of the call.
 #[no_mangle]
 pub unsafe extern "C" fn wxscan_scan_frame(
-    scanner: *const WxScanScanner,
+    scanner: WxScanScannerId,
     data: *const u8,
     width: i32,
     height: i32,
@@ -165,7 +167,7 @@ pub unsafe extern "C" fn wxscan_scan_frame(
     rotation: i32,
     mirror_output: i32,
 ) -> *mut WxScanResults {
-    let Some(scanner) = scanner.as_ref() else {
+    let Some(scanner) = crate::scanner::lookup_scanner(scanner) else {
         return std::ptr::null_mut();
     };
     let Some(bytes) = frame_slice(data, width, height, row_stride) else {
@@ -234,13 +236,12 @@ pub enum WxScanStatus {
 /// in the picture as it is meant to be seen.
 ///
 /// # Safety
-/// `scanner` must come from [`crate::scanner::wxscan_scanner_new`], `path` must
-/// be a NUL terminated string, and `status`, when not NULL, must point to a
+/// `path` must be a NUL terminated string, and `status`, when not NULL, must point to a
 /// writable [`WxScanStatus`].
 #[cfg(feature = "image-io")]
 #[no_mangle]
 pub unsafe extern "C" fn wxscan_scan_path(
-    scanner: *const WxScanScanner,
+    scanner: WxScanScannerId,
     path: *const c_char,
     status: *mut WxScanStatus,
 ) -> *mut WxScanResults {
@@ -250,7 +251,7 @@ pub unsafe extern "C" fn wxscan_scan_path(
         }
     };
 
-    let Some(scanner) = scanner.as_ref() else {
+    let Some(scanner) = crate::scanner::lookup_scanner(scanner) else {
         set(WxScanStatus::BadArgument);
         return std::ptr::null_mut();
     };
@@ -275,7 +276,7 @@ pub unsafe extern "C" fn wxscan_scan_path(
         set(WxScanStatus::Unreadable);
         return std::ptr::null_mut();
     };
-    scan_encoded(scanner, &bytes, set)
+    scan_encoded(&scanner, &bytes, set)
 }
 
 /// Decode an encoded image already in memory and scan it.
@@ -299,14 +300,13 @@ pub unsafe extern "C" fn wxscan_scan_path(
 /// The orientation recorded in the file is applied, exactly as for a path.
 ///
 /// # Safety
-/// `scanner` must come from [`crate::scanner::wxscan_scanner_new`], `data`
-/// must point to at least `len` readable bytes that stay valid for the
+/// `data` must point to at least `len` readable bytes that stay valid for the
 /// duration of the call, and `status`, when not NULL, must point to a writable
 /// [`WxScanStatus`].
 #[cfg(feature = "image-io")]
 #[no_mangle]
 pub unsafe extern "C" fn wxscan_scan_bytes(
-    scanner: *const WxScanScanner,
+    scanner: WxScanScannerId,
     data: *const u8,
     len: usize,
     status: *mut WxScanStatus,
@@ -317,7 +317,7 @@ pub unsafe extern "C" fn wxscan_scan_bytes(
         }
     };
 
-    let Some(scanner) = scanner.as_ref() else {
+    let Some(scanner) = crate::scanner::lookup_scanner(scanner) else {
         set(WxScanStatus::BadArgument);
         return std::ptr::null_mut();
     };
@@ -327,7 +327,7 @@ pub unsafe extern "C" fn wxscan_scan_bytes(
     }
     let bytes = std::slice::from_raw_parts(data, len);
 
-    scan_encoded(scanner, bytes, set)
+    scan_encoded(&scanner, bytes, set)
 }
 
 /// Decode an encoded image and scan it, however its bytes were reached.

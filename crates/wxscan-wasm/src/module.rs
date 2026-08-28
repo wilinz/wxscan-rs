@@ -76,9 +76,11 @@ getrandom::register_custom_getrandom!(no_randomness);
 /// dependency is not on its own a reason for the linker to keep the code.
 /// Naming each one here is.
 #[used]
-static EXPORTED: Kept<15> = Kept([
+static EXPORTED: Kept<17> = Kept([
     wxscan_ffi::wxscan_scanner_new as *const c_void,
-    wxscan_ffi::wxscan_scanner_free as *const c_void,
+    wxscan_ffi::wxscan_scanner_count as *const c_void,
+    wxscan_ffi::wxscan_scanner_retain as *const c_void,
+    wxscan_ffi::wxscan_scanner_release as *const c_void,
     wxscan_ffi::wxscan_scanner_set_scale_factor as *const c_void,
     wxscan_ffi::wxscan_scanner_scale_factor as *const c_void,
     wxscan_ffi::wxscan_scanner_set_confidence_threshold as *const c_void,
@@ -148,16 +150,15 @@ fn packed(document: String) -> u64 {
 /// function.
 ///
 /// # Safety
-/// `scanner` must come from one of the constructors, and the closure must not
-/// read outside the buffer it is given.
+/// The closure must not read outside the buffer it is given.
 unsafe fn scan_to_json(
-    scanner: *const wxscan_ffi::WxScanScanner,
+    scanner: wxscan_ffi::WxScanScannerId,
     scan: impl FnOnce(&wxscan_ffi::WxScanScanner) -> (Vec<wxscan::QRCodeResult>, Vec<wxscan::detector::ssd_detector::QuadPoints>, u32, u32),
 ) -> u64 {
-    if scanner.is_null() {
+    let Some(scanner) = wxscan_ffi::lookup_scanner(scanner) else {
         return 0;
-    }
-    let (results, candidates, width, height) = scan(&*scanner);
+    };
+    let (results, candidates, width, height) = scan(&scanner);
     packed(crate::json::document(&results, &candidates, width, height))
 }
 
@@ -170,7 +171,7 @@ unsafe fn scan_to_json(
 /// `data` must point to at least `width * height` readable bytes.
 #[no_mangle]
 pub unsafe extern "C" fn wxscan_wasm_scan_gray_json(
-    scanner: *const wxscan_ffi::WxScanScanner,
+    scanner: wxscan_ffi::WxScanScannerId,
     data: *const u8,
     width: i32,
     height: i32,
@@ -179,7 +180,10 @@ pub unsafe extern "C" fn wxscan_wasm_scan_gray_json(
         return 0;
     }
     let (w, h) = (width as usize, height as usize);
-    let gray = std::slice::from_raw_parts(data, w * h);
+    // `usize` is 32 bits here, so the product is checked rather than wrapped
+    // into a short slice. The C entry points do the same.
+    let Some(len) = w.checked_mul(h) else { return 0 };
+    let gray = std::slice::from_raw_parts(data, len);
     scan_to_json(scanner, |s| {
         let (r, c) = s.scan_upright(gray, w, h);
         (r, c, width as u32, height as u32)
@@ -193,7 +197,7 @@ pub unsafe extern "C" fn wxscan_wasm_scan_gray_json(
 /// `data` must hold `width * height * bytes_per_pixel` readable bytes.
 #[no_mangle]
 pub unsafe extern "C" fn wxscan_wasm_scan_pixels_json(
-    scanner: *const wxscan_ffi::WxScanScanner,
+    scanner: wxscan_ffi::WxScanScannerId,
     data: *const u8,
     width: i32,
     height: i32,
@@ -206,7 +210,10 @@ pub unsafe extern "C" fn wxscan_wasm_scan_pixels_json(
         return 0;
     }
     let (w, h) = (width as usize, height as usize);
-    let pixels = std::slice::from_raw_parts(data, w * h * bytes_per_pixel);
+    let Some(len) = w.checked_mul(h).and_then(|n| n.checked_mul(bytes_per_pixel)) else {
+        return 0;
+    };
+    let pixels = std::slice::from_raw_parts(data, len);
     let gray = to_gray(pixels, w, h, format);
     scan_to_json(scanner, |s| {
         let (r, c) = s.scan_upright(&gray, w, h);
@@ -221,7 +228,7 @@ pub unsafe extern "C" fn wxscan_wasm_scan_pixels_json(
 /// `data` must hold `row_stride * height` readable bytes.
 #[no_mangle]
 pub unsafe extern "C" fn wxscan_wasm_scan_frame_json(
-    scanner: *const wxscan_ffi::WxScanScanner,
+    scanner: wxscan_ffi::WxScanScannerId,
     data: *const u8,
     width: i32,
     height: i32,
@@ -232,7 +239,10 @@ pub unsafe extern "C" fn wxscan_wasm_scan_frame_json(
     if data.is_null() || width <= 0 || height <= 0 || row_stride < width {
         return 0;
     }
-    let plane = std::slice::from_raw_parts(data, row_stride as usize * height as usize);
+    let Some(len) = (row_stride as usize).checked_mul(height as usize) else {
+        return 0;
+    };
+    let plane = std::slice::from_raw_parts(data, len);
     let (upright, ow, oh) = wxscan::frame::upright_gray(
         plane,
         width as usize,

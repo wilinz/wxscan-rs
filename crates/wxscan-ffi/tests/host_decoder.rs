@@ -10,8 +10,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Mutex, MutexGuard};
 
 use wxscan_ffi::{
-    wxscan_results_free, wxscan_scan_bytes, wxscan_scanner_free, wxscan_scanner_new,
-    wxscan_set_image_decoder, WxScanImageDecoder, WxScanScanner, WxScanStatus,
+    wxscan_results_free, wxscan_scan_bytes, wxscan_scanner_release, wxscan_scanner_new,
+    wxscan_set_image_decoder, WxScanImageDecoder, WxScanScannerId, WxScanStatus,
 };
 
 /// A 2x2 grey square, in the format the fake host decoder hands back.
@@ -77,9 +77,9 @@ fn uninstall() {
     unsafe { wxscan_set_image_decoder(std::ptr::null()) };
 }
 
-unsafe fn plain_scanner() -> *mut WxScanScanner {
+unsafe fn plain_scanner() -> WxScanScannerId {
     let s = wxscan_scanner_new(std::ptr::null(), 0, std::ptr::null(), 0);
-    assert!(!s.is_null());
+    assert_ne!(s, 0);
     s
 }
 
@@ -106,7 +106,7 @@ fn a_host_decoder_is_consulted_for_what_this_build_cannot_read() {
         assert_eq!(((*out).width, (*out).height), (2, 2));
         assert_eq!((*out).results_len, 0);
         wxscan_results_free(out);
-        wxscan_scanner_free(scanner);
+        wxscan_scanner_release(scanner);
     }
     assert_eq!(DECODE_CALLS.load(Ordering::SeqCst), 1);
     assert_eq!(RELEASE_CALLS.load(Ordering::SeqCst), 1, "the buffer is given back");
@@ -128,7 +128,7 @@ fn the_built_in_decoders_answer_first() {
         assert_eq!(status, WxScanStatus::Ok);
         assert_eq!((*out).results_len, 1);
         wxscan_results_free(out);
-        wxscan_scanner_free(scanner);
+        wxscan_scanner_release(scanner);
     }
     assert_eq!(
         DECODE_CALLS.load(Ordering::SeqCst),
@@ -151,7 +151,7 @@ fn a_host_that_declines_leaves_the_old_answer() {
         let out = wxscan_scan_bytes(scanner, data.as_ptr(), data.len(), &mut status);
         assert!(out.is_null());
         assert_eq!(status, WxScanStatus::UnsupportedFormat);
-        wxscan_scanner_free(scanner);
+        wxscan_scanner_release(scanner);
     }
     uninstall();
 }
@@ -169,7 +169,7 @@ fn taking_the_decoder_back_restores_the_old_behaviour() {
         let out = wxscan_scan_bytes(scanner, data.as_ptr(), data.len(), &mut status);
         assert!(out.is_null());
         assert_eq!(status, WxScanStatus::UnsupportedFormat);
-        wxscan_scanner_free(scanner);
+        wxscan_scanner_release(scanner);
     }
 }
 
@@ -192,6 +192,6 @@ fn a_decoder_missing_half_of_itself_is_not_installed() {
         let out = wxscan_scan_bytes(scanner, data.as_ptr(), data.len(), &mut status);
         assert!(out.is_null(), "a half-installed decoder must not be called");
         assert_eq!(status, WxScanStatus::UnsupportedFormat);
-        wxscan_scanner_free(scanner);
+        wxscan_scanner_release(scanner);
     }
 }

@@ -8,8 +8,8 @@
 #![cfg(feature = "image-io")]
 
 use wxscan_ffi::{
-    wxscan_results_free, wxscan_scan_bytes, wxscan_scan_path, wxscan_scanner_free,
-    wxscan_scanner_new, WxScanScanner, WxScanStatus,
+    wxscan_results_free, wxscan_scan_bytes, wxscan_scan_path, wxscan_scanner_release,
+    wxscan_scanner_new, WxScanScannerId, WxScanStatus,
 };
 
 fn bytes(name: &str) -> Vec<u8> {
@@ -18,9 +18,9 @@ fn bytes(name: &str) -> Vec<u8> {
 
 /// A scanner with no weights: enough to decode an ordinary symbol, and it keeps
 /// the test from needing model files.
-unsafe fn plain_scanner() -> *mut WxScanScanner {
+unsafe fn plain_scanner() -> WxScanScannerId {
     let s = wxscan_scanner_new(std::ptr::null(), 0, std::ptr::null(), 0);
-    assert!(!s.is_null(), "the no-model scanner should always build");
+    assert_ne!(s, 0, "the no-model scanner should always build");
     s
 }
 
@@ -36,7 +36,7 @@ fn decodes_a_picture_held_in_memory() {
         assert_eq!(((*out).width, (*out).height), (320, 460));
         assert_eq!((*out).results_len, 1);
         wxscan_results_free(out);
-        wxscan_scanner_free(scanner);
+        wxscan_scanner_release(scanner);
     }
 }
 
@@ -54,7 +54,7 @@ fn applies_the_orientation_the_file_records() {
         assert_eq!(((*out).width, (*out).height), (320, 460));
         assert_eq!((*out).results_len, 1);
         wxscan_results_free(out);
-        wxscan_scanner_free(scanner);
+        wxscan_scanner_release(scanner);
     }
 }
 
@@ -97,7 +97,7 @@ fn agrees_with_the_path_it_could_have_been_read_from() {
 
         wxscan_results_free(from_path);
         wxscan_results_free(from_bytes);
-        wxscan_scanner_free(scanner);
+        wxscan_scanner_release(scanner);
     }
 }
 
@@ -112,7 +112,7 @@ fn bytes_that_are_not_a_picture_say_so() {
         // Never Unreadable: there was nothing to open, only bytes to make
         // sense of, and they did not.
         assert_eq!(status, WxScanStatus::UnsupportedFormat);
-        wxscan_scanner_free(scanner);
+        wxscan_scanner_release(scanner);
     }
 }
 
@@ -124,7 +124,7 @@ fn an_empty_buffer_is_a_format_question_rather_than_a_crash() {
         let out = wxscan_scan_bytes(scanner, [].as_ptr(), 0, &mut status);
         assert!(out.is_null());
         assert_eq!(status, WxScanStatus::UnsupportedFormat);
-        wxscan_scanner_free(scanner);
+        wxscan_scanner_release(scanner);
     }
 }
 
@@ -139,7 +139,7 @@ fn a_null_buffer_is_rejected_rather_than_dereferenced() {
         assert!(
             wxscan_scan_bytes(scanner, std::ptr::null(), 0, std::ptr::null_mut()).is_null()
         );
-        wxscan_scanner_free(scanner);
+        wxscan_scanner_release(scanner);
     }
 }
 
@@ -149,7 +149,7 @@ fn a_null_scanner_is_rejected() {
         let data = bytes("upright.png");
         let mut status = WxScanStatus::Ok;
         assert!(
-            wxscan_scan_bytes(std::ptr::null(), data.as_ptr(), data.len(), &mut status)
+            wxscan_scan_bytes(0, data.as_ptr(), data.len(), &mut status)
                 .is_null()
         );
         assert_eq!(status, WxScanStatus::BadArgument);
