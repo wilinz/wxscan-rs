@@ -49,7 +49,7 @@ one.
 | | Version |
 |---|---|
 | Rust | 1.75 or newer to depend on the crates; a checkout builds with the 1.95.0 that `rust-toolchain.toml` pins, which rustup installs on first use |
-| libtensorflowlite_c | only for the default `tflite` backend, which links it — see [TFLite library](#tflite-library). The `tract` backend needs nothing outside Rust |
+| libtensorflowlite_c | only for the default `tflite` backend, which links it — see [TFLite library](#the-tflite-library). The `tract` backend needs nothing outside Rust |
 
 Nothing is vendored and no build script reaches the network.
 

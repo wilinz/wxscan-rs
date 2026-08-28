@@ -34,8 +34,9 @@ resolution stage, and the orchestration around them.
 ## Models
 
 The weights are not part of this crate, nor of any other. Take the prebuilt ones
-from [wxscan-weights](https://github.com/wilinz/wxscan-weights), where they are
-grouped by format and follow the backend in use, or pass your own buffers:
+from [wxscan-weights](https://github.com/wilinz/wxscan-weights) — all four sit
+in `models/`, named by format, so take the pair matching the backend in use —
+or pass your own buffers:
 
 ```rust
 let detect = std::fs::read("detect.tflite")?;

@@ -32,8 +32,8 @@ for result in scanner.detect_and_decode_gray(&gray, width, height) {
 ## 模型
 
 权重不属于本 crate，也不属于其它任何 crate。去
-[wxscan-weights](https://github.com/wilinz/wxscan-weights) 取预构建的那些，它们按格式
-分组，跟着你用的后端选；也可以传你自己的缓冲：
+[wxscan-weights](https://github.com/wilinz/wxscan-weights) 取预构建的那些——四个文件都在
+`models/` 下，按格式命名，挑跟你的后端对得上的那一对；也可以传你自己的缓冲：
 
 ```rust
 let detect = std::fs::read("detect.tflite")?;
