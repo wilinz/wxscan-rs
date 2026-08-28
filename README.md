@@ -6,6 +6,14 @@ The `wechat_qrcode` algorithm from OpenCV contrib, in Rust: a CNN locates the
 symbols in a frame, a second network upscales each crop, and a fork of ZXing
 decodes them. No OpenCV, no C++, and with the `tract` backend no C at all.
 
+<img src="https://raw.githubusercontent.com/wilinz/wxscan/main/docs/demo.webp" width="300"
+     alt="Two QR codes in one camera frame, each marked; tapping one opens its decoded
+     text, a Chinese payload read as UTF-8.">
+
+*This algorithm at work, driven from the Flutter packages in
+[wxscan](https://github.com/wilinz/wxscan): two codes in one frame, one of
+them turned, read across a desk from a laptop screen.*
+
 Decoding a QR code is the easy part. Finding a small, distant or badly lit one
 in a 1080p frame is what the two CNN stages are for, and why the WeChat scanner
 reads a code from across a room while a plain decoder asks you to hold it up to
@@ -34,11 +42,10 @@ Not on crates.io yet, so a dependency comes from git:
 wxscan = { git = "https://github.com/wilinz/wxscan-rs" }
 ```
 
-The day it is published, that becomes:
+The day it is published:
 
-```toml
-[dependencies]
-wxscan = "0.1"
+```sh
+cargo add wxscan
 ```
 
 The git form follows the default branch; add a `tag`, `branch` or `rev` to pin
@@ -126,8 +133,8 @@ wxscan = { git = "https://github.com/wilinz/wxscan-rs", default-features = false
 
 Once published:
 
-```toml
-wxscan = { version = "0.1", default-features = false, features = ["tract"] }
+```sh
+cargo add wxscan --no-default-features --features tract
 ```
 
 tract builds and runs anywhere cargo does, at some cost in speed against

@@ -5,6 +5,12 @@
 把 [wxscan](../wxscan) 的 C ABI 编成一个 WebAssembly 模块，给浏览器用。产物是一个
 `.wasm` 文件；本 crate 不发布。
 
+<img src="https://raw.githubusercontent.com/wilinz/wxscan/main/docs/demo.webp" width="300"
+     alt="一帧里两个二维码都被框出，点开其中一个显示解出的中文文本，按 UTF-8 读取。">
+
+*同一个扫描器在手机上的样子，那边是原生编译的。到了浏览器里它就变成这个
+crate——[在线演示](https://wilinz.github.io/wxscan/)跑的正是它。*
+
 ```sh
 # 小体积构建：推理交给宿主跑（见下）
 cargo build -p wxscan-wasm --target wasm32-unknown-unknown --profile wasm

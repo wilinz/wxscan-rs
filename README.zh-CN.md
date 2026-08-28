@@ -6,6 +6,12 @@ OpenCV contrib 里的 `wechat_qrcode` 算法，用 Rust 重写了一遍。先用
 找出码的位置，再用第二个网络把每一块放大，最后交给 ZXing 的一个分支去解。不依赖
 OpenCV，没有 C++，用 `tract` 后端时连 C 都没有。
 
+<img src="https://raw.githubusercontent.com/wilinz/wxscan/main/docs/demo.webp" width="300"
+     alt="一帧里两个二维码都被框出，点开其中一个显示解出的中文文本，按 UTF-8 读取。">
+
+*这套算法干活的样子，由 [wxscan](https://github.com/wilinz/wxscan) 里的 Flutter
+包驱动：一帧里两个码，其中一个是转过的，隔着一张桌子从笔记本屏幕上读到。*
+
 解码是简单的那一半。难的是在 1080p 的一帧里找到那个又小又远、光照还差的码，那两级 CNN
 就是干这个的。微信的扫描器能隔着半个房间扫到码，普通解码器却要你把码怼到镜头前，差别
 就在这里。
@@ -30,11 +36,10 @@ OpenCV，没有 C++，用 `tract` 后端时连 C 都没有。
 wxscan = { git = "https://github.com/wilinz/wxscan-rs" }
 ```
 
-发布之后写成：
+发布之后：
 
-```toml
-[dependencies]
-wxscan = "0.1"
+```sh
+cargo add wxscan
 ```
 
 git 这种写法跟着默认分支走，加 `tag`、`branch` 或 `rev` 可以钉死一个。
@@ -118,8 +123,8 @@ wxscan = { git = "https://github.com/wilinz/wxscan-rs", default-features = false
 
 发布之后：
 
-```toml
-wxscan = { version = "0.1", default-features = false, features = ["tract"] }
+```sh
+cargo add wxscan --no-default-features --features tract
 ```
 
 tract 在 cargo 能到的任何地方都能编能跑，代价是比 tflite 的 XNNPACK 内核慢一些。两个

@@ -5,6 +5,14 @@
 The [wxscan](../wxscan) C ABI as a WebAssembly module, for browsers. The
 artifact is a `.wasm` file; this crate is not published.
 
+<img src="https://raw.githubusercontent.com/wilinz/wxscan/main/docs/demo.webp" width="300"
+     alt="Two QR codes in one camera frame, each marked; tapping one opens its decoded
+     text, a Chinese payload read as UTF-8.">
+
+*The same scanner on a phone, where it is compiled natively. This crate is what
+it becomes in a browser — the [live demo](https://wilinz.github.io/wxscan/)
+runs exactly this.*
+
 ```sh
 # The small build: the host runs inference (see below)
 cargo build -p wxscan-wasm --target wasm32-unknown-unknown --profile wasm

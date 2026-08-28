@@ -6,6 +6,13 @@ A minimal FFI binding to libtensorflowlite_c, the LiteRT C API. It is the
 default inference backend of [`wxscan`](https://github.com/wilinz/wxscan-rs/tree/main/crates/wxscan), and is
 usable on its own as a small tflite binding.
 
+<img src="https://raw.githubusercontent.com/wilinz/wxscan/main/docs/demo.webp" width="300"
+     alt="Two QR codes in one camera frame, each marked; tapping one opens its decoded
+     text, a Chinese payload read as UTF-8.">
+
+*Every code found in this recording was found by a CNN running through this
+crate — it is what stands between the detector and libtensorflowlite_c.*
+
 ```rust
 let net = wxscan_tflite::TfliteNet::from_bytes(model_bytes)?;
 // dims are in the model's own layout, NHWC for these models

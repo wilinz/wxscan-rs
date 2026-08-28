@@ -5,6 +5,13 @@
 A Rust port of the `wechat_qrcode` algorithm from OpenCV contrib: CNN-based
 detection, super resolution, and decoding. No OpenCV dependency.
 
+<img src="https://raw.githubusercontent.com/wilinz/wxscan/main/docs/demo.webp" width="300"
+     alt="Two QR codes in one camera frame, each marked; tapping one opens its decoded
+     text, a Chinese payload read as UTF-8.">
+
+*This crate is what decodes in the recording. The phone around it is the
+Flutter binding in [wxscan](https://github.com/wilinz/wxscan).*
+
 ```rust
 use wxscan::WeChatQRCode;
 
@@ -67,8 +74,8 @@ wxscan = { git = "https://github.com/wilinz/wxscan-rs", default-features = false
 
 Once published:
 
-```toml
-wxscan = { version = "0.1", default-features = false, features = ["tract"] }
+```sh
+cargo add wxscan --no-default-features --features tract
 ```
 
 One thing is needed on `wasm32-unknown-unknown` whatever the features: the host
@@ -86,8 +93,8 @@ wxscan = { git = "https://github.com/wilinz/wxscan-rs", default-features = false
 
 Once published:
 
-```toml
-wxscan = { version = "0.1", default-features = false }
+```sh
+cargo add wxscan --no-default-features
 ```
 
 A backend is one method. The trait lives here, so a crate of your own can

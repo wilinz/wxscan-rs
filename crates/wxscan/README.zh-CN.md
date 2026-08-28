@@ -5,6 +5,12 @@
 OpenCV contrib 里 `wechat_qrcode` 算法的 Rust 移植：CNN 检测、超分辨率、解码。不依赖
 OpenCV。
 
+<img src="https://raw.githubusercontent.com/wilinz/wxscan/main/docs/demo.webp" width="300"
+     alt="一帧里两个二维码都被框出，点开其中一个显示解出的中文文本，按 UTF-8 读取。">
+
+*录像里做解码的就是这个 crate。围着它的那部手机是
+[wxscan](https://github.com/wilinz/wxscan) 里的 Flutter 绑定。*
+
 ```rust
 use wxscan::WeChatQRCode;
 
@@ -62,8 +68,8 @@ wxscan = { git = "https://github.com/wilinz/wxscan-rs", default-features = false
 
 发布之后：
 
-```toml
-wxscan = { version = "0.1", default-features = false, features = ["tract"] }
+```sh
+cargo add wxscan --no-default-features --features tract
 ```
 
 不管开哪些 feature，在 `wasm32-unknown-unknown` 上都有一件事必须做：宿主得在模块
@@ -80,8 +86,8 @@ wxscan = { git = "https://github.com/wilinz/wxscan-rs", default-features = false
 
 发布之后：
 
-```toml
-wxscan = { version = "0.1", default-features = false }
+```sh
+cargo add wxscan --no-default-features
 ```
 
 一个后端就是一个方法。trait 就在这里，所以你自己的 crate 可以给自己的类型实现：

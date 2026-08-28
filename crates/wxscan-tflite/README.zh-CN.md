@@ -5,6 +5,12 @@
 libtensorflowlite_c（LiteRT 的 C API）的一层最小 FFI 绑定。它是
 [`wxscan`](https://github.com/wilinz/wxscan-rs/tree/main/crates/wxscan) 的默认推理后端，也可以单独拿来当一个小巧的 tflite 绑定用。
 
+<img src="https://raw.githubusercontent.com/wilinz/wxscan/main/docs/demo.webp" width="300"
+     alt="一帧里两个二维码都被框出，点开其中一个显示解出的中文文本，按 UTF-8 读取。">
+
+*录像里每一个被找到的码，都是某个 CNN 通过这个 crate 跑出来的——它就夹在检测器和
+libtensorflowlite_c 中间。*
+
 ```rust
 let net = wxscan_tflite::TfliteNet::from_bytes(model_bytes)?;
 // 维度用模型自己的布局，这两个模型是 NHWC

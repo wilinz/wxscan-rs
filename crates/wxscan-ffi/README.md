@@ -8,6 +8,13 @@ C++, Swift, Kotlin, Python and elsewhere.
 `include/wxscan.h` is generated from these sources with cbindgen and committed,
 so consumers need neither cbindgen nor a Rust toolchain.
 
+<img src="https://raw.githubusercontent.com/wilinz/wxscan/main/docs/demo.webp" width="300"
+     alt="Two QR codes in one camera frame, each marked; tapping one opens its decoded
+     text, a Chinese payload read as UTF-8.">
+
+*Everything in this recording crosses this ABI: the camera frames go from Swift
+into it directly, and the corners come back the same way.*
+
 ```c
 #include "wxscan.h"
 

@@ -8,6 +8,11 @@
 `include/wxscan.h` 由这些源码用 cbindgen 生成，并且提交进了仓库，所以使用方既不需要
 cbindgen，也不需要 Rust 工具链。
 
+<img src="https://raw.githubusercontent.com/wilinz/wxscan/main/docs/demo.webp" width="300"
+     alt="一帧里两个二维码都被框出，点开其中一个显示解出的中文文本，按 UTF-8 读取。">
+
+*录像里的一切都经过这套 ABI：相机帧从 Swift 直接进来，角点也原路回去。*
+
 ```c
 #include "wxscan.h"
 
