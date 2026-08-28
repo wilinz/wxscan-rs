@@ -3,7 +3,7 @@
 [English](README.md) · **简体中文**
 
 libtensorflowlite_c（LiteRT 的 C API）的一层最小 FFI 绑定。它是
-[`wxscan`](../wxscan) 的默认推理后端，也可以单独拿来当一个小巧的 tflite 绑定用。
+[`wxscan`](https://github.com/wilinz/wxscan-rs/tree/main/crates/wxscan) 的默认推理后端，也可以单独拿来当一个小巧的 tflite 绑定用。
 
 ```rust
 let net = wxscan_tflite::TfliteNet::from_bytes(model_bytes)?;

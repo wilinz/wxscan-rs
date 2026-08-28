@@ -2,7 +2,7 @@
 
 **English** · [简体中文](README.zh-CN.md)
 
-The C ABI for [`wxscan`](../wxscan), for callers in C,
+The C ABI for [`wxscan`](https://github.com/wilinz/wxscan-rs/tree/main/crates/wxscan), for callers in C,
 C++, Swift, Kotlin, Python and elsewhere.
 
 `include/wxscan.h` is generated from these sources with cbindgen and committed,

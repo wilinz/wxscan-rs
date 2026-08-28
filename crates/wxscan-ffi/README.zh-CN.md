@@ -2,7 +2,7 @@
 
 [English](README.md) · **简体中文**
 
-[`wxscan`](../wxscan) 的 C ABI，给 C、C++、Swift、Kotlin、Python 以及别的语言的调用方
+[`wxscan`](https://github.com/wilinz/wxscan-rs/tree/main/crates/wxscan) 的 C ABI，给 C、C++、Swift、Kotlin、Python 以及别的语言的调用方
 用。
 
 `include/wxscan.h` 由这些源码用 cbindgen 生成，并且提交进了仓库，所以使用方既不需要

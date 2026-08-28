@@ -3,7 +3,7 @@
 **English** · [简体中文](README.zh-CN.md)
 
 A minimal FFI binding to libtensorflowlite_c, the LiteRT C API. It is the
-default inference backend of [`wxscan`](../wxscan), and is
+default inference backend of [`wxscan`](https://github.com/wilinz/wxscan-rs/tree/main/crates/wxscan), and is
 usable on its own as a small tflite binding.
 
 ```rust

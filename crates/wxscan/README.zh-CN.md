@@ -50,7 +50,7 @@ CNN 推理藏在 `net::Net` trait 后面，算法的哪一部分都不知道是�
 
 | Feature | 引擎 | 权重 | C 依赖 |
 |---|---|---|---|
-| `tflite`（默认） | [`wxscan-tflite`](../wxscan-tflite) | `detect.tflite`、`sr.tflite` | libtensorflowlite_c |
+| `tflite`（默认） | [`wxscan-tflite`](https://github.com/wilinz/wxscan-rs/tree/main/crates/wxscan-tflite) | `detect.tflite`、`sr.tflite` | libtensorflowlite_c |
 | `tract` | [tract](https://crates.io/crates/tract-onnx) | `detect.onnx`、`sr.onnx` | 无 |
 
 布局转换也放在 tflite 适配器里：tflite 用 NHWC，trait 约定的是 NCHW。tract 那边不用转，
