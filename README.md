@@ -44,6 +44,15 @@ wxscan = "0.1"
 The git form follows the default branch; add a `tag`, `branch` or `rev` to pin
 one.
 
+**What you need**
+
+| | Version |
+|---|---|
+| Rust | 1.75 or newer to depend on the crates; a checkout builds with the 1.95.0 that `rust-toolchain.toml` pins, which rustup installs on first use |
+| libtensorflowlite_c | only for the default `tflite` backend, which links it — see [TFLite library](#tflite-library). The `tract` backend needs nothing outside Rust |
+
+Nothing is vendored and no build script reaches the network.
+
 `cvlite` and `wxing` are not published either, and this crate names them as
 ordinary dependencies, so a build has to say where they are:
 

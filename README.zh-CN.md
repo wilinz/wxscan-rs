@@ -39,6 +39,15 @@ wxscan = "0.1"
 
 git 这种写法跟着默认分支走，加 `tag`、`branch` 或 `rev` 可以钉死一个。
 
+**需要什么**
+
+| | 版本 |
+|---|---|
+| Rust | 依赖这些 crate 要 1.75 或更新；直接 checkout 构建用的是 `rust-toolchain.toml` 钉死的 1.95.0，rustup 第一次跑时自动装 |
+| libtensorflowlite_c | 只有默认的 `tflite` 后端要，见 [TFLite 库](#tflite-库)。`tract` 后端除了 Rust 什么都不要 |
+
+不内置任何二进制，构建脚本也不联网。
+
 `cvlite` 和 `wxing` 同样还没发布，而本 crate 是把它们当普通依赖写的，所以构建时得告诉
 cargo 去哪里找：
 
