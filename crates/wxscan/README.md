@@ -62,7 +62,12 @@ both formats are converted from, and it builds anywhere cargo does:
 
 ```toml
 wxscan = { git = "https://github.com/wilinz/wxscan-rs", default-features = false, features = ["tract"] }
-# wxscan = { version = "0.1", default-features = false, features = ["tract"] }   # once published
+```
+
+Once published:
+
+```toml
+wxscan = { version = "0.1", default-features = false, features = ["tract"] }
 ```
 
 One thing is needed on `wasm32-unknown-unknown` whatever the features: the host
@@ -76,7 +81,12 @@ builds with plain `cargo build`:
 
 ```toml
 wxscan = { git = "https://github.com/wilinz/wxscan-rs", default-features = false }
-# wxscan = { version = "0.1", default-features = false }   # once published
+```
+
+Once published:
+
+```toml
+wxscan = { version = "0.1", default-features = false }
 ```
 
 A backend is one method. The trait lives here, so a crate of your own can

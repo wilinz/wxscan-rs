@@ -23,12 +23,18 @@ OpenCV，没有 C++，用 `tract` 后端时连 C 都没有。
 
 ## 使用
 
-还没发到 crates.io。两种写法都列在下面，发布那天改一行就能切过去：
+还没发到 crates.io，所以依赖从 git 引：
 
 ```toml
 [dependencies]
 wxscan = { git = "https://github.com/wilinz/wxscan-rs" }
-# wxscan = "0.1"                    # 发布后从 crates.io 引入
+```
+
+发布之后写成：
+
+```toml
+[dependencies]
+wxscan = "0.1"
 ```
 
 git 这种写法跟着默认分支走，加 `tag`、`branch` 或 `rev` 可以钉死一个。
@@ -99,7 +105,12 @@ CNN 推理藏在 `net::Net` trait 后面，算法的哪一部分都不知道是�
 
 ```toml
 wxscan = { git = "https://github.com/wilinz/wxscan-rs", default-features = false, features = ["tract"] }
-# wxscan = { version = "0.1", default-features = false, features = ["tract"] }   # 发布后
+```
+
+发布之后：
+
+```toml
+wxscan = { version = "0.1", default-features = false, features = ["tract"] }
 ```
 
 tract 在 cargo 能到的任何地方都能编能跑，代价是比 tflite 的 XNNPACK 内核慢一些。两个
