@@ -9,6 +9,10 @@ license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
 readme = "README.md"
+# Test fixtures are dev-only: the SSD golden outputs and the image corpus are
+# what a checkout runs `cargo test` against, not something a caller of this
+# crate builds with. Excluding them matches cvlite and wxing.
+exclude = ["tests/**"]
 build = "build.rs"
 
 [lib]
