@@ -168,8 +168,10 @@ distant ones, which is what the CNN stages contribute.
 This repository vendors no binaries. Point `TFLITE_LIB_DIR` at a directory
 containing libtensorflowlite_c, or let the final link step resolve the symbols,
 which is what Apple platforms normally do. The library name differs by
-distribution: desktop builds of the C API are `libtensorflowlite_c`, while
-Google's LiteRT distribution for Android names the same API `libLiteRt`.
+distribution: a build of the C API is `libtensorflowlite_c` on every platform,
+while Google's LiteRT AAR for Android names the same API `libLiteRt`. Android
+links the first by default; `wxscan-tflite`'s `litert` feature switches it to
+the second.
 
 ```sh
 TFLITE_LIB_DIR=/path/to/libs cargo test --workspace

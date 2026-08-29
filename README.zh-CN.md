@@ -154,8 +154,9 @@ impl Net for MyNet {
 
 仓库不内置任何二进制。把 `TFLITE_LIB_DIR` 指向一个装着 libtensorflowlite_c 的目录，
 或者把这些符号留给最终的链接步骤去解析——Apple 平台通常这么做。库的名字随分发渠道
-变：C API 的桌面构建叫 `libtensorflowlite_c`，Google 面向 Android 的 LiteRT 分发把
-同一套 API 叫 `libLiteRt`。
+变：C API 的构建在每个平台上都叫 `libtensorflowlite_c`，Google 面向 Android 的 LiteRT
+AAR 把同一套 API 叫 `libLiteRt`。Android 默认链前者，`wxscan-tflite` 的 `litert`
+feature 换成后者。
 
 ```sh
 TFLITE_LIB_DIR=/path/to/libs cargo test --workspace

@@ -14,4 +14,10 @@ build = "build.rs"
 [lib]
 crate-type = ["rlib"]
 
+[features]
+# Link Google's LiteRT AAR for Android, which names the C API libLiteRt, in
+# place of a libtensorflowlite_c built from the TensorFlow sources. Only the
+# name on the link line differs; the API behind it is the same.
+litert = []
+
 [dependencies]

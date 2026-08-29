@@ -33,8 +33,9 @@ depends on this crate.
 
 No binaries are vendored. Point `TFLITE_LIB_DIR` at a directory containing the
 library, or let the final link step resolve the symbols, which is what Apple
-platforms normally do. The name differs by distribution: desktop builds of the C
-API are `libtensorflowlite_c`, while Google's LiteRT distribution for Android
-names the same API `libLiteRt`.
+platforms normally do. The name differs by distribution: a build of the C API
+is `libtensorflowlite_c` on every platform, while Google's LiteRT AAR for
+Android names the same API `libLiteRt`. Android links the first by default; the
+`litert` feature switches it to the second.
 
 Part of [wxscan-rs](https://github.com/wilinz/wxscan-rs). Apache-2.0.

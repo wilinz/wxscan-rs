@@ -27,7 +27,8 @@ resize 会失败。
 ## TFLite 库
 
 不内置任何二进制。把 `TFLITE_LIB_DIR` 指向一个装着该库的目录，或者把这些符号留给最终
-的链接步骤去解析，Apple 平台通常这么做。名字随分发渠道变：C API 的桌面构建叫
-`libtensorflowlite_c`，Google 面向 Android 的 LiteRT 分发把同一套 API 叫 `libLiteRt`。
+的链接步骤去解析，Apple 平台通常这么做。名字随分发渠道变：C API 的构建在每个平台上都叫
+`libtensorflowlite_c`，Google 面向 Android 的 LiteRT AAR 把同一套 API 叫 `libLiteRt`。
+Android 默认链前者，`litert` feature 换成后者。
 
 [wxscan-rs](https://github.com/wilinz/wxscan-rs) 的一部分。Apache-2.0。

@@ -11,9 +11,10 @@
 //!   * link it at the final link step, which is the common approach on Apple
 //!     platforms
 //!
-//! The library name differs by distribution: desktop builds of the C API are
-//! `libtensorflowlite_c`, while Google's LiteRT distribution for Android names
-//! the same API `libLiteRt`.
+//! The library name differs by distribution: builds of the C API are
+//! `libtensorflowlite_c` on every platform, while Google's LiteRT AAR for
+//! Android names the same API `libLiteRt`. Android links the first by default;
+//! enable the `litert` feature for the second.
 
 use std::ffi::c_void;
 
@@ -60,9 +61,17 @@ macro_rules! tflite_ffi {
 #[link(name = "tensorflowlite_c")]
 extern "C" { tflite_ffi!(); }
 
-// Android links libLiteRt, the name Google's LiteRT distribution uses for the
-// same C API.
-#[cfg(target_os = "android")]
+// So does Android, when the library came from a build of the C API - which is
+// what a caller building TensorFlow itself ends up with, and what wxscan
+// ships for every platform.
+#[cfg(all(target_os = "android", not(feature = "litert")))]
+#[link(name = "tensorflowlite_c")]
+extern "C" { tflite_ffi!(); }
+
+// Google's LiteRT distribution for Android names the same C API libLiteRt,
+// and an AAR is where most Android callers get it. Nothing can detect which
+// one is on the link line, so it is a feature rather than a guess.
+#[cfg(all(target_os = "android", feature = "litert"))]
 #[link(name = "LiteRt")]
 extern "C" { tflite_ffi!(); }
 
