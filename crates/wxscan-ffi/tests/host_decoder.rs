@@ -4,7 +4,7 @@
 //! that recognises a made-up format, which is enough to say the three things
 //! that matter: it is asked, it is asked *second*, and its buffer is given
 //! back.
-#![cfg(feature = "image-io")]
+#![cfg(feature = "png")]
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Mutex, MutexGuard};

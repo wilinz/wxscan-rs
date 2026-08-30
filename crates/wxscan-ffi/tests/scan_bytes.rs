@@ -5,7 +5,7 @@
 //! they read the same files and compare against the same expectations. What
 //! differs is what cannot happen here: there is nothing to open, so nothing is
 //! ever `Unreadable`.
-#![cfg(feature = "image-io")]
+#![cfg(all(feature = "png", feature = "jpeg"))]
 
 use wxscan_ffi::{
     wxscan_results_free, wxscan_scan_bytes, wxscan_scan_path, wxscan_scanner_release,

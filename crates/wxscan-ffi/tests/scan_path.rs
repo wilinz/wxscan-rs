@@ -1,5 +1,7 @@
 //! `wxscan_scan_path`: reading the file itself rather than being handed pixels.
-#![cfg(feature = "image-io")]
+// png and jpeg, both of which these cases read; `image-io` alone is the
+// entry points without a decoder behind them.
+#![cfg(all(feature = "png", feature = "jpeg"))]
 
 use std::ffi::CString;
 

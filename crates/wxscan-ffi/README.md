@@ -67,11 +67,15 @@ WxScanResults *out = wxscan_scan_path(scanner, "/tmp/photo.jpg", &status);
 
 The orientation recorded in the file is applied, so a photograph taken with the
 phone turned sideways scans upright and its coordinates match what was on
-screen. PNG, JPEG and GIF are decoded, which is everything a photo picker
-writes; HEIC is not, and a caller that must read one needs the platform's
-decoder and `wxscan_scan_pixels`. The entry point is behind the `image-io`
-feature, on by default; it costs 436 KB of decoders, so a build that has no use
-for it can leave it out.
+screen. The entry point is behind the `image-io` feature and each decoder
+behind a feature of its own: `png`, `jpeg` and `gif` are on by default, which
+is everything a photo picker writes and 436 KB together; `webp`, `bmp` and
+`tiff` are another 570 KB and off, being formats that arrive from somewhere
+other than a camera. HEIC is in none of them — it wants an HEVC decoder — and
+a caller that must read one lends its platform's through
+`wxscan_set_image_decoder`, or decodes it itself and calls
+`wxscan_scan_pixels`. A build with no use for encoded images at all leaves
+`image-io` out and carries no decoder and no entry point.
 
 For camera frames, `wxscan_scan_frame` additionally takes a row stride, a
 rotation, and a flag that mirrors the returned x coordinates. The frame itself

@@ -1,14 +1,12 @@
-//! webp, bmp and tiff: the formats carried everywhere the platform has no
-//! decoder to lend.
+//! webp, bmp and tiff: the formats that arrive from somewhere other than a
+//! camera — webp off the web, bmp out of a Windows screenshot.
 //!
-//! Nobody photographs anything in these, but they arrive from elsewhere — webp
-//! off the web, bmp out of a Windows screenshot — and Windows, Linux and
-//! Android have nothing else to fall back on.
-//!
-//! Apple deliberately does not carry them: ImageIO reads all three already, and
-//! a second copy would be 570 KB for nothing. So this file asserts the opposite
-//! thing on Apple platforms — that they are *not* built in — which is what
-//! keeps the target dependency from being quietly turned into a plain one.
+//! Each is its own feature and each costs real size, so what this file
+//! asserts is that the feature is what decides: on, the decoder is built in;
+//! off, the bytes are not this library's to read and the answer is
+//! `UnsupportedFormat` rather than a picture decoded by something that was
+//! meant to be gone. A caller with a platform decoder to lend — Apple's
+//! ImageIO reads all three — leaves them off and loses nothing.
 #![cfg(feature = "image-io")]
 
 use wxscan_ffi::{
@@ -48,31 +46,37 @@ fn built_in_reads(name: &str) -> bool {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "macos")))]
-#[test]
-fn webp_bmp_and_tiff_are_carried_where_there_is_no_platform_decoder() {
-    for name in ["upright.webp", "upright.bmp", "upright.tiff"] {
-        assert!(built_in_reads(name), "{name} should be built in here");
-    }
+/// Each of the three, on when its feature is and off when it is not. Written
+/// as one test per format rather than a loop over three, so that a build
+/// carrying two of them still says which.
+macro_rules! format_follows_its_feature {
+    ($name:ident, $feature:literal, $file:literal) => {
+        #[test]
+        fn $name() {
+            if cfg!(feature = $feature) {
+                assert!(
+                    built_in_reads($file),
+                    concat!($file, " should be built in with the ", $feature, " feature")
+                );
+            } else {
+                assert!(
+                    !built_in_reads($file),
+                    concat!($file, " is built in without the ", $feature, " feature")
+                );
+            }
+        }
+    };
 }
 
-/// On Apple these are ImageIO's job, and carrying them too would be 570 KB
-/// spent twice. Nothing breaks if that changes — the picture still decodes,
-/// through the platform — so only a test notices.
-#[cfg(any(target_os = "ios", target_os = "macos"))]
-#[test]
-fn webp_bmp_and_tiff_are_left_to_the_platform_on_apple() {
-    for name in ["upright.webp", "upright.bmp", "upright.tiff"] {
-        assert!(
-            !built_in_reads(name),
-            "{name} is built in on Apple, where ImageIO already reads it"
-        );
-    }
-}
+format_follows_its_feature!(webp_follows_its_feature, "webp", "upright.webp");
+format_follows_its_feature!(bmp_follows_its_feature, "bmp", "upright.bmp");
+format_follows_its_feature!(tiff_follows_its_feature, "tiff", "upright.tiff");
 
-/// png, jpeg and gif are the floor and are carried everywhere, platform
-/// decoder or not.
+/// png is in `default` and is what every other test here reads, so a build
+/// that has lost it should say so once, plainly, rather than as five failures
+/// about something else.
+#[cfg(feature = "png")]
 #[test]
-fn the_three_a_camera_writes_are_everywhere() {
+fn png_is_built_in() {
     assert!(built_in_reads("upright.png"));
 }

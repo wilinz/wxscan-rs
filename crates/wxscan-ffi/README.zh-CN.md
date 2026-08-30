@@ -59,9 +59,12 @@ WxScanResults *out = wxscan_scan_path(scanner, "/tmp/photo.jpg", &status);
 ```
 
 文件里记的方向会被应用上，所以横过来拍的照片扫的时候是正立的，坐标也和当时屏幕上看到
-的对得上。PNG、JPEG 和 GIF 会被解码，相册选择器写得出来的就这几种格式；HEIC 不解，
-必须读 HEIC 的调用方得拿平台自己的解码器配 `wxscan_scan_pixels`。这个入口在
-`image-io` feature 后面，默认开着；它要占 436 KB 的解码器，用不上的构建可以关掉。
+的对得上。这个入口在 `image-io` feature 后面，每个解码器还各有自己的 feature：`png`、
+`jpeg`、`gif` 默认开着，相册选择器写得出来的就这几种，三个加起来 436 KB；`webp`、
+`bmp`、`tiff` 另算 570 KB，默认关着——这几种不是相机写的，是从别处来的。HEIC 一个都
+不在里面，它要的是 HEVC 解码器；非读不可的调用方用 `wxscan_set_image_decoder` 把平台
+自己的借进来，或者自己解完调 `wxscan_scan_pixels`。压根用不上编码图片的构建把
+`image-io` 也关掉，解码器和入口一起没有。
 
 相机帧交给 `wxscan_scan_frame`，它还多收三样：行跨距、旋转，以及一个把 x 坐标镜像回去
 的标志。帧本身从不镜像，因为检测器是在非镜像输入上训练的。这个标志是为了让坐标跟一个
